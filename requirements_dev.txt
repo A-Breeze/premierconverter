@@ -1,5 +1,5 @@
 # Package requirements
--r ./requirements.txt
+-r requirements.txt
 
 # Additional requirements for package development
 pyprojroot==0.2.0
