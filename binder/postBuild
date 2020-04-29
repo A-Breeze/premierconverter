@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# This file specifies commands to run when the Binder container starts
+# --------------------------------------------------------------------
+
+# Stop everything if one command fails
+set -e
+
+# Allow conda to be used in bash by configuring the .bashrc
+conda init bash
+
+# Build jupyter lab to include extensions
+jupyter lab build
