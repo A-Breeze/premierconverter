@@ -9,5 +9,5 @@ dependencies:
   - notebook==5.5.0
   - jupyterlab==1.2.6
   - jupytext==1.4.2
-  #- pip: 
-  #  - -r file:../requirements_dev.txt
+  - pip: 
+    - -r ../requirements_dev.txt
