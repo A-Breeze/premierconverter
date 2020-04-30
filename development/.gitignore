@@ -1,2 +1,3 @@
 # Ignore output exhibits from running notebooks
 *.txt
+*.xlsx

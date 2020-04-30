@@ -22,7 +22,7 @@ This document describes how to run the repo using JupyterLab on Binder. It *shou
 All console commands are **run from the root folder of this project** unless otherwise stated.
 
 ### Start Binder instance
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/A-Breeze/premierconverter/master?urlpath=lab)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/A-Breeze/premierconverter/basic_tests?urlpath=lab)
 
 ### Development environment
 The development requirements consist of the package dependencies, plus extra packages useful during development, as specified in `requirements_dev.txt`. They can be automatically installed into a conda-env as follows.
@@ -74,6 +74,12 @@ pip install --upgrade pip
 pip install ./dist/premierconverter-0.1.2.tar.gz  # Specify the desired version
 ```
 
+### Execute notebooks from command line
+The development notebooks have been saved in `jupytext` markdown format, so they can be executed (to produce the outputs) and compiled (to `ipynb` format) as follows:
+```
+jupytext --to notebook --output development/compiled/data-conversion-challenge-202004.ipynb --execute development/data-conversion-challenge-202004.md
+```
+
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Further notes
@@ -87,6 +93,22 @@ pip install ./dist/premierconverter-0.1.2.tar.gz  # Specify the desired version
 - Example of a package that consists of just one module: <https://github.com/benjaminp/six>
 
 ### Future ideas
+- Additional functionality:
+    - Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
+    - Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
+    - Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
+    - Refactor the index name `Ref_num` to be a configuration parameter.
+    - Allow the user to overwrite the configuration parameters.
+    - Validation checks on the consistency of premium values against what is expected.
+- Documentation:
+    - How to:
+        - Install and use
+        - Debug warnings and errors
+        - Contribute to development (this file)
+    - Record version history
+    - Possible formats: 
+        - (Compiled) notebook (works well on GitHub)
+        - Markdown
 - Set up CI/CD pipeline on Azure DevOps (free with GitHub subscription), e.g.:
     - Alternatively *Azure Test Plans* and *Pipelines*, e.g.: <https://docs.microsoft.com/en-us/azure/devops/pipelines/artifacts/pypi>
     - *Azure Artifacts* for a (private) Python package registry, e.g.: <https://docs.microsoft.com/en-us/azure/devops/artifacts/quickstarts/python-packages?view=azure-devops>
