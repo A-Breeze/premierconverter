@@ -44,7 +44,7 @@ stages:
         pytest
       displayName: 'Run tests'
 
-- stage: Build and Publish
+- stage: Build_and_Publish
   # Condition to only run this job on a specified branch
   condition: eq(variables['Build.SourceBranch'], 'refs/heads/azure_pipeline')
   # Specify that this job depends on another having already run
@@ -68,7 +68,7 @@ stages:
       inputs:
         sourceFolder: 'dist'
         targetFolder: '$(Build.ArtifactStagingDirectory)'
-      displayName: 'Copy package dist to:  $(Build.ArtifactStagingDirectory)'
+      displayName: 'Copy package dist to: $(Build.ArtifactStagingDirectory)'
     - task: PublishBuildArtifacts@1
       inputs:
         artifactName: 'linux_dist'
