@@ -5,11 +5,13 @@
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema
 
 # To select which branches to run *all* tasks on push to remote repo
-# trigger:
+# (but the 'condition' for each stage / job / step still need to be met)
+trigger: none
 # - master
 # To select which branches to run *all* tasks creating a pull request
-pr:
-- master
+# (but the 'condition' for each stage / job / step still need to be met)
+# pr:
+# - master
 
 # Possible vmImage selections:
 # 'vs2017-win2016'
@@ -45,8 +47,9 @@ stages:
       displayName: 'Run tests'
 
 - stage: Build_and_Publish
-  # Condition to only run this job on a specified branch
-  condition: eq(variables['Build.SourceBranch'], 'refs/heads/azure_pipeline')
+  # Condition to only run this stage on a specified branch
+  # condition: eq(variables['Build.SourceBranchName'], 'master')
+
   # Specify that this job depends on another having already run
   dependsOn: Test
 

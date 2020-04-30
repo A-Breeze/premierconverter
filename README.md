@@ -64,7 +64,7 @@ pytest
 ```
 
 ### Build package
-The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` and `dist/` subfolders.
+The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` (for some intermediate files) and `dist/` (for the final source and wheel distributions) subfolders.
 ```
 python setup.py sdist bdist_wheel
 ```
@@ -94,8 +94,10 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 
 ### Research notes
 - Example of a package that consists of just one module: <https://github.com/benjaminp/six>
+- Worked example of creating an Azure Pipeline to test, build and publish a Python package as an Azure Artifact: <https://medium.com/raa-labs/creating-a-pipeline-in-azure-devops-to-build-and-publish-python-packages-artifacts-ea2f99410e6c>
 
 ### Future ideas
+Backlog of all possible ideas, big or small, high priority or low.
 - Additional functionality:
     - Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
     - Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
@@ -103,6 +105,12 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
     - Refactor the index name `Ref_num` to be a configuration parameter.
     - Allow the user to overwrite the configuration parameters.
     - Validation checks on the consistency of premium values against what is expected.
+    - Allow the functionality to be used as a CLI using the `click` package.
+- Tests:
+    - Expected functionality
+    - Expected failures / warnings
+    - Edge cases
+    - Benchmark performance
 - Documentation:
     - How to:
         - Install and use
@@ -112,8 +120,12 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
     - Possible formats: 
         - (Compiled) notebook (works well on GitHub)
         - Markdown
-- Set up CI/CD pipeline on Azure DevOps (free with GitHub subscription), e.g.:
-    - Alternatively *Azure Test Plans* and *Pipelines*, e.g.: <https://docs.microsoft.com/en-us/azure/devops/pipelines/artifacts/pypi>
-    - *Azure Artifacts* for a (private) Python package registry, e.g.: <https://docs.microsoft.com/en-us/azure/devops/artifacts/quickstarts/python-packages?view=azure-devops>
+- Development process:
+    - Use `pylint` to check the code quality.
+    - Use `pytest-cov` to check the coverage (although it will be very low).
+    - Consider relaxing the dependency version requirements to minimum, rather than strict, versions.
+    - Investigate using `tox` to run tests on with various dependency versions.
+    - Complete setting up CI/CD pipeline on Azure DevOps by:
+        - *Azure Artifacts* for a (private) Python package registry
 
 <p align="right"><a href="#top">Back to top</a></p>
