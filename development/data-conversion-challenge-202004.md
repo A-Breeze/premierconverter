@@ -90,7 +90,6 @@ assert pd.__version__ == '0.25.3'
 print(f'pandas version:\t\t\t{pd.__version__}')
 assert opyxl_version == '3.0.3'
 print(f'openpyxl version:\t\t{opyxl_version}')
-assert PCon.__version__ == '0.1.2'
 print(f'premierconverter version:\t{PCon.__version__}')
 ```
 
