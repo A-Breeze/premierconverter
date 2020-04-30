@@ -26,7 +26,10 @@ All console commands are **run from the root folder of this project** unless oth
 
 ### Development environment
 The development requirements consist of the package dependencies, plus extra packages useful during development, as specified in `requirements_dev.txt`. They can be automatically installed into a conda-env as follows.
-- **Binder**: A conda-env is created automatically from `binder/environment.yml` in Binder is called `notebook` by default.
+- **Binder**: A conda-env is created automatically from `binder/environment.yml` in Binder is called `notebook` by default. Unless otherwise stated, the below console commands assume the conda-env is activated, i.e.:
+    ```
+    conda activate notebook
+    ```
 - **Locally** (on Windows):
     ```
     conda env create -f binder\environment.yml --force
@@ -44,18 +47,31 @@ The development requirements consist of the package dependencies, plus extra pac
 ### Development installation
 While developing the package, we can install it from the local code (without needing to build and then install) as follows:
 ```
+python -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
 pip install -e .
 ```
 
 ### Run automated tests
+Ensure the package is installed.
 ```
-pytest tests
+pytest
 ```
 
 ### Build package
 The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` and `dist/` subfolders.
 ```
 python setup.py sdist bdist_wheel
+```
+
+### Install built pacakge
+```
+python -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install ./dist/premierconverter-0.1.2.tar.gz  # Specify the desired version
 ```
 
 <p align="right"><a href="#top">Back to top</a></p>
