@@ -88,3 +88,13 @@ stages:
         python setup.py sdist
       # Optional: could also create a wheel using bdist_wheel
       displayName: 'Build distributions'
+    - task: CopyFiles@2
+      inputs:
+        sourceFolder: 'dist'
+        targetFolder: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'Copy package dist to: $(Build.ArtifactStagingDirectory)'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        artifactName: 'windows_dist'
+        publishLocation: 'Container'
+      displayName: 'Publish package as artifact'
