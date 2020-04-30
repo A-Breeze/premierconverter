@@ -67,4 +67,7 @@ python setup.py sdist bdist_wheel
     - Security is *not* guaranteed within Binder (as per [here](https://mybinder.readthedocs.io/en/latest/faq.html#can-i-push-data-from-my-binder-session-back-to-my-repository)), so I'll be pushing Git from another location, which involves some manual copy-paste.
     - The package environment has to be restored each time, which takes some time.
 
+### Research notes
+- Example of a package that consists of just one module: <https://github.com/benjaminp/six>
+
 <p align="right"><a href="#top">Back to top</a></p>

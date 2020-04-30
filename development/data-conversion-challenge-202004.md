@@ -17,6 +17,10 @@ jupyter:
 Challenge to automate the conversion of raw data into a specified format of data to make it more usable.
 
 **Important note**: The data used in this notebook has been randomised and all names have been masked so they can be used for training purposes. This notebook is for training purposes only.
+
+This notebook is available in the following locations. These versions are kept in sync *manually* - there should not be discrepancies, but it is possible.
+- On Kaggle: <https://www.kaggle.com/btw78jt/data-conversion-challenge-202004>
+- In the GitHub project repo: <https://github.com/A-Breeze/premierconverter>. See the `README.md` for further instructions.
 <!-- #endregion -->
 
 <!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->
@@ -44,11 +48,20 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 ```
 
 ```python
+# Determine whether this notebook is running on Kaggle
+from pathlib import Path
+
+on_kaggle = False
+print("Current working directory: " + str(Path('.').absolute()))
+if str(Path('.').absolute()) == '/kaggle/working':
+    on_kaggle = True
+```
+
+```python
 # Import built-in modules
 import sys
 import platform
 import os
-from pathlib import Path
 
 # Import external modules
 from IPython import __version__ as IPy_version
@@ -58,6 +71,12 @@ from openpyxl import __version__ as opyxl_version
 from openpyxl import load_workbook
 
 # Import project modules
+if not on_kaggle:
+    from pyprojroot import here
+    root_dir_path = here()
+    # Allow modules to be imported relative to the project root directory
+    if not sys.path[0] == root_dir_path:
+        sys.path.insert(0, str(root_dir_path))
 import premierconverter as PCon
 
 # Check they have loaded and the versions are as expected
@@ -79,14 +98,17 @@ print(f'premierconverter version:\t{PCon.__version__}')
 # Output exact environment specification, in case it is needed later
 print("Capturing full package environment spec")
 print("(But note that not all these packages are required)")
-!pip freeze > requirements_Kaggle.txt
-!jupyter --version > jupyter_versions.txt
+!pip freeze > requirements_snapshot.txt
+!jupyter --version > jupyter_versions_snapshot.txt
 ```
 
 ```python
 # Configuration variables
-input_folder_path = Path('/kaggle/input')
-raw_data_folder_path = input_folder_path / 'dummy-premier-data-raw'
+if on_kaggle:
+    raw_data_folder_path = Path('/kaggle/input') / 'dummy-premier-data-raw'
+else:
+    import proj_config
+    raw_data_folder_path = proj_config.example_data_dir_path
 assert raw_data_folder_path.is_dir()
 print("Correct: All locations are available as expected")
 ```

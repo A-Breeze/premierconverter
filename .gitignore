@@ -1,7 +1,5 @@
 # --------------
 # Project specific ignore patterns
-ignored/
-
 # Additional ignore patterns for files created by Binder
 .bash_history
 .bash_logout
