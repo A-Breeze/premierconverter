@@ -86,4 +86,9 @@ pip install ./dist/premierconverter-0.1.2.tar.gz  # Specify the desired version
 ### Research notes
 - Example of a package that consists of just one module: <https://github.com/benjaminp/six>
 
+### Future ideas
+- Set up CI/CD pipeline on Azure DevOps (free with GitHub subscription), e.g.:
+    - Alternatively *Azure Test Plans* and *Pipelines*, e.g.: <https://docs.microsoft.com/en-us/azure/devops/pipelines/artifacts/pypi>
+    - *Azure Artifacts* for a (private) Python package registry, e.g.: <https://docs.microsoft.com/en-us/azure/devops/artifacts/quickstarts/python-packages?view=azure-devops>
+
 <p align="right"><a href="#top">Back to top</a></p>
