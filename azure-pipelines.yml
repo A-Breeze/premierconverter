@@ -11,6 +11,10 @@
 pr:
 - master
 
+# Possible vmImage selections:
+# 'vs2017-win2016'
+# 'ubuntu-latest'
+
 stages:
 
 - stage: Test
@@ -18,6 +22,19 @@ stages:
   - job: Linux
     pool:
       vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/venv_for_package.yml
+    - script: |
+        . venv/bin/activate
+        pytest
+      displayName: 'Run tests'
+  - job: Windows
+    pool:
+      vmImage: 'vs2017-win2016'
     strategy:
       matrix:
         Python36:
@@ -38,6 +55,19 @@ stages:
   - job: Linux
     pool:
       vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/venv_for_package.yml
+    - script: |
+        . venv/bin/activate
+        python setup.py sdist bdist_wheel
+      displayName: 'Build distributions'
+  - job: Windows
+    pool:
+      vmImage: 'vs2017-win2016'
     strategy:
       matrix:
         Python36:
