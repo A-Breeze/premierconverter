@@ -29,7 +29,6 @@ stages:
     steps:
     - template: azure_templates/venv_for_package.yml
     - script: |
-        . venv/bin/activate
         pytest
       displayName: 'Run tests'
   - job: Windows
@@ -42,7 +41,6 @@ stages:
     steps:
     - template: azure_templates/venv_for_package.yml
     - script: |
-        . venv/bin/activate
         pytest
       displayName: 'Run tests'
 
@@ -60,9 +58,8 @@ stages:
         Python36:
           python.version: '3.6'
     steps:
-    - template: azure_templates/venv_for_package.yml
+    - template: azure_templates/env_for_package.yml
     - script: |
-        . venv/bin/activate
         python setup.py sdist bdist_wheel
       displayName: 'Build distributions'
   - job: Windows
@@ -73,8 +70,7 @@ stages:
         Python36:
           python.version: '3.6'
     steps:
-    - template: azure_templates/venv_for_package.yml
+    - template: azure_templates/env_for_package.yml
     - script: |
-        . venv/bin/activate
         python setup.py sdist bdist_wheel
       displayName: 'Build distributions'

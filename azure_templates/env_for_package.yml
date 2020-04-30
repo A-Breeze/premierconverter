@@ -1,0 +1,22 @@
+# CI/CD commands to run as an Azure Pipeline
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(python.version)'
+  displayName: 'Use Python $(python.version)'
+
+# To keep the CI tasks independent of operating system,
+# decided not to create and activate a venv,
+# since the command is different for Linux and Windows.
+# - script: |
+#     python -m venv venv
+#     source venv/bin/activate
+#   # Or, for Windows:  venv\Scripts\activate.bat
+#   displayName: 'Create and activate venv'
+
+- script: |
+    pip install --upgrade pip
+    pip install -r requirements.txt
+  displayName: 'Install dependencies'
