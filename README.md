@@ -16,6 +16,7 @@ Functionality to convert an Excel spreadsheet in a given format into a more usef
     - [Run automated tests](#Run-automated-tests)
     - [Build package](#Build-package)
     - [Compile development notebooks](#Compile-development-notebooks)
+1. [Further notes](#Further-notes)
 
 <p align="right"><a href="#top">Back to top</a></p>
 
@@ -95,6 +96,8 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 ### Research notes
 - Example of a package that consists of just one module: <https://github.com/benjaminp/six>
 - Worked example of creating an Azure Pipeline to test, build and publish a Python package as an Azure Artifact: <https://medium.com/raa-labs/creating-a-pipeline-in-azure-devops-to-build-and-publish-python-packages-artifacts-ea2f99410e6c>
+- Using `click` to create a CLI from Python functions: <https://dbader.org/blog/python-commandline-tools-with-click>
+- How to make a Python script executable from the command line (in Linux): <https://dbader.org/blog/how-to-make-command-line-commands-with-python>
 
 ### Future ideas
 Backlog of all possible ideas, big or small, high priority or low.

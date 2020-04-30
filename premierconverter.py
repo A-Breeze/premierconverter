@@ -2,7 +2,7 @@
 Automate the conversion of raw data into a specified format of data to make it more usable
 """
 
-__version__ = '0.1.2'
+__version__ = '0.2.0'
 
 #########
 # Setup #
@@ -15,6 +15,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from openpyxl import load_workbook
+import click
 
 # Configuration variables for the expected format and structure of the data
 excel_extensions = ['.xlsx', '.xls', '.xlsm']
@@ -465,3 +466,55 @@ def load_formatted_spreadsheet(out_filepath, out_sheet_name):
         else col.astype('float')
     ))
     return(df_reload)
+
+def formatted_dfs_are_equal(df1, df2, tol=1e-10):
+    """Reasonableness checks between two DataFrames of output format"""
+    assert (df1.dtypes == df2.dtypes).all()
+    assert df1.shape == df2.shape
+    assert (df1.index == df2.index).all()
+    assert df1.iloc[:,1:].apply(
+        lambda col: np.abs(col - df2[col.name]) < tol
+    ).all().all()
+    return(True)
+
+######################
+# Make CLI available #
+######################
+@click.command(context_settings = dict(
+    help_option_names = ['-h', '--help']
+))
+@click.version_option(__version__)
+@click.argument(
+    'input_filepath',
+    type = click.Path(exists=True),
+    required=True,
+    metavar = '<input Excel file>',
+)
+@click.option(
+    '--force', 'force_overwrite',
+    is_flag=True,
+    help='Overwrite an existing output worksheet',
+)
+def cli(
+    input_filepath,
+    input_sheet=None,
+    out_filepath='formatted_data.xlsx',
+    out_sheet_name='Sheet1',
+    force_overwrite=False,
+    **kwargs,
+):
+    """
+    Load raw data from Excel, convert to specified format, and save result
+    """
+    convert(
+        input_filepath,
+        input_sheet,
+        out_filepath,
+        out_sheet_name,
+        force_overwrite,
+        **kwargs,
+    )
+    return(None)
+
+if __name__ == '__main__':
+    cli()
