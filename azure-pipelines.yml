@@ -27,7 +27,7 @@ stages:
         Python36:
           python.version: '3.6'
     steps:
-    - template: azure_templates/venv_for_package.yml
+    - template: azure_templates/env_for_package.yml
     - script: |
         pytest
       displayName: 'Run tests'
@@ -39,7 +39,7 @@ stages:
         Python36:
           python.version: '3.6'
     steps:
-    - template: azure_templates/venv_for_package.yml
+    - template: azure_templates/env_for_package.yml
     - script: |
         pytest
       displayName: 'Run tests'
