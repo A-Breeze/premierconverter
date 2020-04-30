@@ -55,9 +55,7 @@ pytest tests
 ### Build package
 The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` and `dist/` subfolders.
 ```
-cd premierconverter
 python setup.py sdist bdist_wheel
-cd ..
 ```
 
 <p align="right"><a href="#top">Back to top</a></p>

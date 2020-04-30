@@ -1,0 +1,6 @@
+include LICENSE
+include requirements.txt
+
+# Include tests and example data files
+recursive-include tests *
+recursive-include example_data *
