@@ -1,31 +1,26 @@
 # CI/CD commands to run as an Azure Pipeline
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
 
+# To select which branches to run *all* tasks on push to remote repo
+# trigger:
+# - master
+# To select which branches to run *all* tasks creating a pull request
+# pr:
+# - master
+# - develop
+
 jobs:
 - job: Test
+
   pool:
     vmImage: 'ubuntu-latest'
   strategy:
     matrix:
       Python36:
         python.version: '3.6'
+  
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '$(python.version)'
-    displayName: 'Use Python $(python.version)'
-
-  - script: |
-      python -m venv venv
-      source venv/bin/activate
-      pip install --upgrade pip
-    displayName: 'Create venv'
-
-  - script: |
-      . venv/bin/activate
-      pip install -r requirements.txt
-    displayName: 'Install dependencies'
-
+  - template: azure_templates/venv_for_package.yml
   - script: |
       . venv/bin/activate
       pytest
@@ -33,7 +28,7 @@ jobs:
   
 - job: Build
   # Condition to only run this job on a specified branch
-  condition: eq(variables['Build.SourceBranch'], 'refs/heads/basic_tests')
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/azure_pipeline')
 
   # Specify that this job depends on another having already run
   dependsOn: Test
@@ -44,23 +39,9 @@ jobs:
     matrix:
       Python36:
         python.version: '3.6'
+  
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '$(python.version)'
-    displayName: 'Use Python $(python.version)'
-
-  - script: |
-      python -m venv venv
-      source venv/bin/activate
-      pip install --upgrade pip
-    displayName: 'Create venv'
-
-  - script: |
-      . venv/bin/activate
-      pip install -r requirements.txt
-    displayName: 'Install dependencies'
-
+  - template: azure_templates/venv_for_package.yml
   - script: |
       . venv/bin/activate
       python setup.py sdist bdist_wheel
