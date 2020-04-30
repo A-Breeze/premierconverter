@@ -1,0 +1,103 @@
+# CI/CD commands to run as an Azure Pipeline
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+# Main page for YAML schema (contains links to more detail on each command):
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema
+
+# To select which branches to run *all* tasks on push to remote repo
+# (but the 'condition' for each stage / job / step still need to be met)
+trigger: none
+# - master
+# To select which branches to run *all* tasks creating a pull request
+# (but the 'condition' for each stage / job / step still need to be met)
+# pr:
+# - master
+
+# Possible vmImage selections:
+# 'vs2017-win2016'
+# 'ubuntu-latest'
+
+stages:
+
+- stage: Test
+  jobs:
+  - job: Linux
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/env_for_package.yml
+    - script: |
+        pytest
+      displayName: 'Run tests'
+  - job: Windows
+    pool:
+      vmImage: 'vs2017-win2016'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/env_for_package.yml
+    - script: |
+        pytest
+      displayName: 'Run tests'
+
+- stage: Build_and_Publish
+  # Condition to only run this stage on a specified branch
+  # condition: eq(variables['Build.SourceBranchName'], 'master')
+
+  # Specify that this job depends on another having already run
+  dependsOn: Test
+
+  jobs:
+  - job: Linux
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/env_for_package.yml
+    - script: |
+        python setup.py sdist
+      # Optional: could also create a wheel using bdist_wheel
+      displayName: 'Build distributions'
+    - task: CopyFiles@2
+      inputs:
+        sourceFolder: 'dist'
+        targetFolder: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'Copy package dist to: $(Build.ArtifactStagingDirectory)'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        artifactName: 'linux_dist'
+        publishLocation: 'Container'
+      displayName: 'Publish package as artifact'
+
+  - job: Windows
+    pool:
+      vmImage: 'vs2017-win2016'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/env_for_package.yml
+    - script: |
+        python setup.py sdist
+      # Optional: could also create a wheel using bdist_wheel
+      displayName: 'Build distributions'
+    - task: CopyFiles@2
+      inputs:
+        sourceFolder: 'dist'
+        targetFolder: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'Copy package dist to: $(Build.ArtifactStagingDirectory)'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        artifactName: 'windows_dist'
+        publishLocation: 'Container'
+      displayName: 'Publish package as artifact'

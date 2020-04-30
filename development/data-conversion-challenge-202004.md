@@ -90,7 +90,6 @@ assert pd.__version__ == '0.25.3'
 print(f'pandas version:\t\t\t{pd.__version__}')
 assert opyxl_version == '3.0.3'
 print(f'openpyxl version:\t\t{opyxl_version}')
-assert PCon.__version__ == '0.1.2'
 print(f'premierconverter version:\t{PCon.__version__}')
 ```
 
@@ -154,7 +153,7 @@ pf_sep = '_'
 
 ```python
 # Input file location
-input_filepath = raw_data_folder_path / 'Premier_Test_dummy_data.xlsx'
+input_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
 input_sheet = None
 if input_sheet is None:
     input_sheet = 0
@@ -485,6 +484,38 @@ assert df_formatted.iloc[:,1:].apply(
 print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
 
+## Load expected output to check it is as expected
+
+```python
+# Location of sheet of expected results
+expected_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
+expected_sheet = 'expected_result'
+```
+
+```python
+# Check it worked
+df_expected = pd.read_excel(
+    expected_filepath, sheet_name=expected_sheet,
+    engine="openpyxl",
+    index_col=[0],
+).apply(lambda col: (
+    col if col.name in raw_struct['stem']['col_names'][0]
+    else col.astype('float')
+))
+
+df_expected.head()
+```
+
+```python
+assert (df_formatted.dtypes == df_expected.dtypes).all()
+assert df_expected.shape == df_formatted.shape
+assert (df_formatted.index == df_expected.index).all()
+assert df_formatted.iloc[:,1:].apply(
+    lambda col: np.abs(col - df_expected[col.name]) < 1e-10
+).all().all()
+print("Correct: The reloaded values are equal, up to floating point tolerance")
+```
+
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
 
 # Using the functions
@@ -495,7 +526,7 @@ help(PCon.convert)
 
 ```python
 # Run with default arguments
-input_filepath = raw_data_folder_path / 'Premier_Test_dummy_data.xlsx'
+input_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
 out_filepath, out_sheet_name = PCon.convert(input_filepath)
 ```
 
@@ -519,6 +550,22 @@ assert df_reload.shape == df_formatted.shape
 assert (df_formatted.index == df_reload.index).all()
 assert df_formatted.iloc[:,1:].apply(
     lambda col: np.abs(col - df_reload[col.name]) < 1e-10
+).all().all()
+print("Correct: The reloaded values are equal, up to floating point tolerance")
+```
+
+```python
+# Check against expected output from manually created worksheet
+expected_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
+expected_sheet = 'expected_result'
+df_expected = PCon.load_formatted_spreadsheet(expected_filepath, expected_sheet)
+
+# Check it matches expectations
+assert (df_formatted.dtypes == df_expected.dtypes).all()
+assert df_expected.shape == df_formatted.shape
+assert (df_formatted.index == df_expected.index).all()
+assert df_formatted.iloc[:,1:].apply(
+    lambda col: np.abs(col - df_expected[col.name]) < 1e-10
 ).all().all()
 print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
