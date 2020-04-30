@@ -1,48 +1,50 @@
 # CI/CD commands to run as an Azure Pipeline
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
 
+# Main page for YAML schema (contains links to more detail on each command):
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema
+
 # To select which branches to run *all* tasks on push to remote repo
 # trigger:
 # - master
 # To select which branches to run *all* tasks creating a pull request
-# pr:
-# - master
-# - develop
+pr:
+- master
 
-jobs:
-- job: Test
+stages:
 
-  pool:
-    vmImage: 'ubuntu-latest'
-  strategy:
-    matrix:
-      Python36:
-        python.version: '3.6'
-  
-  steps:
-  - template: azure_templates/venv_for_package.yml
-  - script: |
-      . venv/bin/activate
-      pytest
-    displayName: 'Run tests'
-  
-- job: Build
+- stage: Test
+  jobs:
+  - job: Linux
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/venv_for_package.yml
+    - script: |
+        . venv/bin/activate
+        pytest
+      displayName: 'Run tests'
+
+- stage: Build
   # Condition to only run this job on a specified branch
   condition: eq(variables['Build.SourceBranch'], 'refs/heads/azure_pipeline')
-
   # Specify that this job depends on another having already run
   dependsOn: Test
-
-  pool:
-    vmImage: 'ubuntu-latest'
-  strategy:
-    matrix:
-      Python36:
-        python.version: '3.6'
-  
-  steps:
-  - template: azure_templates/venv_for_package.yml
-  - script: |
-      . venv/bin/activate
-      python setup.py sdist bdist_wheel
-    displayName: 'Build distributions'
+  jobs:
+  - job: Linux
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+    steps:
+    - template: azure_templates/venv_for_package.yml
+    - script: |
+        . venv/bin/activate
+        python setup.py sdist bdist_wheel
+      displayName: 'Build distributions'

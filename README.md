@@ -1,5 +1,7 @@
 <a name="top"></a>
 
+[![Build Status](https://dev.azure.com/a-breeze/premierconverter/_apis/build/status/A-Breeze.premierconverter?branchName=master)](https://dev.azure.com/a-breeze/premierconverter/_build/latest?definitionId=1&branchName=master)
+
 # Premier Converter
 Functionality to convert an Excel spreadsheet in a given format into a more useful format.
 
