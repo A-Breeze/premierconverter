@@ -69,6 +69,7 @@ import numpy as np
 import pandas as pd
 from openpyxl import __version__ as opyxl_version
 from openpyxl import load_workbook
+from click import __version__ as click_version
 
 # Import project modules
 if not on_kaggle:
@@ -90,6 +91,8 @@ assert pd.__version__ == '0.25.3'
 print(f'pandas version:\t\t\t{pd.__version__}')
 assert opyxl_version == '3.0.3'
 print(f'openpyxl version:\t\t{opyxl_version}')
+assert click_version == '7.1.1'
+print(f'click version:\t\t\t{click_version}')
 print(f'premierconverter version:\t{PCon.__version__}')
 ```
 
@@ -153,22 +156,22 @@ pf_sep = '_'
 
 ```python
 # Input file location
-input_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
-input_sheet = None
-if input_sheet is None:
-    input_sheet = 0
+in_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
+in_sheet = None
+if in_sheet is None:
+    in_sheet = 0
 
 # Checks
-input_filepath = Path(input_filepath)
-if not input_filepath.is_file():
+in_filepath = Path(in_filepath)
+if not in_filepath.is_file():
     raise FileNotFoundError(
-        "\n\tinput_filepath: There is no file at the input location:"
-        f"\n\t'{input_filepath}'"
+        "\n\tin_filepath: There is no file at the input location:"
+        f"\n\t'{in_filepath}'"
         "\n\tCannot read the input data"
     )
-if not input_filepath.suffix in excel_extensions:
+if not in_filepath.suffix in excel_extensions:
     warnings.warn(
-        f"input_filepath: The input file extension '{input_filepath.suffix}' "
+        f"in_filepath: The input file extension '{in_filepath.suffix}' "
         "is not a recognised Excel extension",
     )
 print("Correct: Input file exists and has an Excel extension")
@@ -221,7 +224,7 @@ print("Correct: A suitable location for output has been chosen")
 
 ```python
 df_raw = pd.read_excel(
-    input_filepath, sheet_name=input_sheet,
+    in_filepath, sheet_name=in_sheet,
     engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
     header=None, index_col=0,
 ).rename_axis(index="Ref_num")
@@ -232,11 +235,16 @@ df_raw.head()
 ```python
 # Check it is as expected
 if not (
+    # At least the stem columns and one factor set column
+    df_raw.shape[1] >= 
+    raw_struct['stem']['ncols'] + 1 * raw_struct['f_set']['ncols']
+) or not (
+    # Stem columns plus a multiple of factor set columns
     (df_raw.shape[1] - raw_struct['stem']['ncols']) 
     % raw_struct['f_set']['ncols'] == 0
 ):
     warnings.warn(
-        f"Raw data: Incorrect number of columns: {df_raw.shape[1]}"
+        f"Raw data: Incorrect number of columns in workbook: {df_raw.shape[1] + 1}"
         "\n\tThere should be: 1 for index, "
         f"{raw_struct['stem']['ncols']} for stem section, "
         f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
@@ -526,14 +534,15 @@ help(PCon.convert)
 
 ```python
 # Run with default arguments
-input_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
-out_filepath, out_sheet_name = PCon.convert(input_filepath)
+in_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
+out_filepath = 'formatted_data.xlsx'
+res_filepath, res_sheet_name = PCon.convert(in_filepath, out_filepath)
 ```
 
 ```python
 # Run the pipeline manually to check
 # Load raw data
-df_raw = PCon.read_raw_data(input_filepath)
+df_raw = PCon.read_raw_data(in_filepath)
 # Get converted DataFrame
 df_formatted = PCon.convert_df(df_raw)
 
@@ -542,7 +551,7 @@ df_formatted.head()
 
 ```python
 # Reload resulting data from workbook
-df_reload = PCon.load_formatted_spreadsheet(out_filepath, out_sheet_name)
+df_reload = PCon.load_formatted_spreadsheet(res_filepath, res_sheet_name)
 
 # Check it matches expectations
 assert (df_formatted.dtypes == df_reload.dtypes).all()
@@ -572,7 +581,7 @@ print("Correct: The reloaded values are equal, up to floating point tolerance")
 
 ```python
 # Delete the results workbook
-out_filepath.unlink()
+res_filepath.unlink()
 print("Workspace restored")
 ```
 

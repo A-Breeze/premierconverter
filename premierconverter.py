@@ -38,17 +38,17 @@ raw_struct = {
 ######################
 # Workflow functions #
 ######################
-def validate_input_filepath(input_filepath):
-    """Checks on input_filepath"""    
-    if not input_filepath.is_file():
+def validate_input_filepath(in_filepath):
+    """Checks on in_filepath"""    
+    if not in_filepath.is_file():
         raise FileNotFoundError(
-            "\n\tinput_filepath: There is no file at the input location:"
-            f"\n\t'{input_filepath}'"
+            "\n\tin_filepath: There is no file at the input location:"
+            f"\n\t'{in_filepath}'"
             "\n\tCannot read the input data"
         )
-    if not input_filepath.suffix in excel_extensions:
+    if not in_filepath.suffix in excel_extensions:
         warnings.warn(
-            f"input_filepath: The input file extension '{input_filepath.suffix}' "
+            f"in_filepath: The input file extension '{in_filepath.suffix}' "
             "is not a recognised Excel extension",
         )
     return(None)
@@ -89,19 +89,19 @@ def validate_output_options(out_filepath, out_sheet_name, force_overwrite):
     return(xl_writer)
 
 
-def read_raw_data(input_filepath, input_sheet=None):
+def read_raw_data(in_filepath, in_sheet=None):
     """
     Load data from spreadsheet
     
-    input_filepath: Location of the Excel file to read
-    input_sheet: None or 0 for the first sheet, or the name of a sheet
+    in_filepath: Location of the Excel file to read
+    in_sheet: None or 0 for the first sheet, or the name of a sheet
     """
     # Set defaults
-    if input_sheet is None:
-        input_sheet = 0
+    if in_sheet is None:
+        in_sheet = 0
     
     df_raw = pd.read_excel(
-        input_filepath, sheet_name=input_sheet,
+        in_filepath, sheet_name=in_sheet,
         engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
         header=None, index_col=0,
     ).rename_axis(index="Ref_num")
@@ -112,11 +112,16 @@ def read_raw_data(input_filepath, input_sheet=None):
 def validate_raw_data(df_raw):
     """Checks on the loaded raw data"""
     if not (
+        # At least the stem columns and one factor set column
+        df_raw.shape[1] >= 
+        raw_struct['stem']['ncols'] + 1 * raw_struct['f_set']['ncols']
+    ) or not (
+        # Stem columns plus a multiple of factor set columns
         (df_raw.shape[1] - raw_struct['stem']['ncols']) 
         % raw_struct['f_set']['ncols'] == 0
     ):
         warnings.warn(
-            f"Raw data: Incorrect number of columns: {df_raw.shape[1]}"
+            f"Raw data: Incorrect number of columns in workbook: {df_raw.shape[1] + 1}"
             "\n\tThere should be: 1 for index, "
             f"{raw_struct['stem']['ncols']} for stem section, "
             f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
@@ -408,9 +413,9 @@ def convert_df(
 
 
 def convert(
-    input_filepath,
-    input_sheet=None,
-    out_filepath='formatted_data.xlsx',
+    in_filepath,
+    out_filepath,
+    in_sheet=None,
     out_sheet_name='Sheet1',
     force_overwrite=False,
     **kwargs,
@@ -418,32 +423,40 @@ def convert(
     """
     Load raw data from Excel, convert to specified format, and save result
     
-    input_filepath: Excel file containing a sheet with the raw data
-    input_sheet: None or 0 for the first sheet, or the name of a sheet
+    in_filepath: Path to Excel file containing a sheet with the raw data
     out_filepath: Path of an Excel file to save the formatted data
+        If it does not exist, a new workbook will be created.
+        The directory must already exist.
+    
+    in_sheet: Which sheet (numbered from 0 or sheet name) of the input workbook to use
     out_sheet_name: Name of the sheet to save the formatted data
     force_overwrite: Set to True if you want to overwrite the existing workbook sheet
+    
     **kwargs: Arguments to pass to convert_df
     
     Returns: (out_filepath, out_sheet_name) if it completes
     """
     # Set defaults
-    input_filepath = Path(input_filepath)
+    in_filepath = Path(in_filepath)
     out_filepath = Path(out_filepath)
     
     # Validate function inputs
-    validate_input_filepath(input_filepath)
+    validate_input_filepath(in_filepath)
     xl_writer = validate_output_options(out_filepath, out_sheet_name, force_overwrite)
     
     # Load raw data
-    df_raw = read_raw_data(input_filepath, input_sheet)
+    df_raw = read_raw_data(in_filepath, in_sheet)
     
     # Get converted DataFrame
     df_formatted = convert_df(df_raw, **kwargs)
     
     # Save results to a workbook
     if save_to_workbook(df_formatted, xl_writer, out_sheet_name):
-        print("Output saved")
+        print(
+            "Output saved"
+            f"\nFile:\t{out_filepath.absolute()}"
+            f"\nSheet:\t{out_sheet_name}"
+        )
     
     return((out_filepath, out_sheet_name))
 
@@ -485,34 +498,71 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
 ))
 @click.version_option(__version__)
 @click.argument(
-    'input_filepath',
+    'in_filepath',
     type = click.Path(exists=True),
     required=True,
-    metavar = '<input Excel file>',
+    metavar = '<input filepath>',
+)
+@click.argument(
+    'out_filepath',
+    type = click.Path(),
+    required=True,
+    metavar = '<output filepath>',
+)
+@click.option(
+    '--in_sheet', '-i', 'in_sheet',
+    default="0", show_default=True,
+    help='Which sheet (numbered from 0 or sheet name) of the input workbook to use',
+)
+@click.option(
+    '--out_sheet', '-o', 'out_sheet_name',
+    default="Sheet1", show_default=True,
+    help='Name of the sheet to save the formatted data',
 )
 @click.option(
     '--force', 'force_overwrite',
     is_flag=True,
     help='Overwrite an existing output worksheet',
 )
+@click.option(
+    '--no_checks', '-n', 'no_checks',
+    is_flag=True,
+    help='Stop optional validation checks from running',
+)
 def cli(
-    input_filepath,
-    input_sheet=None,
-    out_filepath='formatted_data.xlsx',
-    out_sheet_name='Sheet1',
-    force_overwrite=False,
-    **kwargs,
+    in_filepath,
+    out_filepath,
+    # Default values for these arguments are given above
+    in_sheet,
+    out_sheet_name,
+    force_overwrite,
+    no_checks,
 ):
     """
     Load raw data from Excel, convert to specified format, and save result
+    
+    <input filepath>: Path to Excel file containing a sheet with the raw data
+    
+    <output filepath>: Path where the resulting Excel file should go.
+    If it does not exist, a new workbook will be created.
+    The directory must already exist.
     """
+    # Format inputs
+    # in_sheet passed from click is a string
+    # Convert it to an int if possible
+    try: 
+        in_sheet = int(in_sheet)
+    except ValueError:
+        pass
+    
+    # Pass parameters to convert()
     convert(
-        input_filepath,
-        input_sheet,
+        in_filepath,
         out_filepath,
+        in_sheet,
         out_sheet_name,
         force_overwrite,
-        **kwargs,
+        with_validation = not no_checks,
     )
     return(None)
 

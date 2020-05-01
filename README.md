@@ -17,6 +17,7 @@ Functionality to convert an Excel spreadsheet in a given format into a more usef
     - [Build package](#Build-package)
     - [Compile development notebooks](#Compile-development-notebooks)
 1. [Further notes](#Further-notes)
+1. [Future ideas](#Future-ideas)
 
 <p align="right"><a href="#top">Back to top</a></p>
 
@@ -99,36 +100,49 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 - Using `click` to create a CLI from Python functions: <https://dbader.org/blog/python-commandline-tools-with-click>
 - How to make a Python script executable from the command line (in Linux): <https://dbader.org/blog/how-to-make-command-line-commands-with-python>
 
-### Future ideas
+<p align="right"><a href="#top">Back to top</a></p>
+
+## Future ideas
 Backlog of all possible ideas, big or small, high priority or low.
-- Additional functionality:
-    - Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
-    - Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
-    - Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
-    - Refactor the index name `Ref_num` to be a configuration parameter.
-    - Allow the user to overwrite the configuration parameters.
-    - Validation checks on the consistency of premium values against what is expected.
-    - Allow the functionality to be used as a CLI using the `click` package.
-- Tests:
+
+### Additional functionality
+- Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
+- Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
+- Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
+- Refactor the index name `Ref_num` to be a configuration parameter.
+- Allow the user to overwrite the configuration parameters.
+- Validation checks on the consistency of premium values against what is expected.
+
+### UI
+- Allow the functionality to be used as a CLI using the `click` package.
+- Create a GUI using: 
+    - `tkinter` (built-in, suitable for simple applications). Alternative `PyQt5` has more complicated license arrangements and it more suitable for larger applications. Cannot develop this inside Kaggle or Binder.
+    - a web framework, e.g. `bokeh`.
+
+### Tests
+- Create up `pytest` fixtures to allow setup / teardown for the Excel spreadsheets for testing
+- Aspects to test:
     - Expected functionality
     - Expected failures / warnings
     - Edge cases
     - Benchmark performance
-- Documentation:
-    - How to:
-        - Install and use
-        - Debug warnings and errors
-        - Contribute to development (this file)
-    - Record version history
-    - Possible formats: 
-        - (Compiled) notebook (works well on GitHub)
-        - Markdown
-- Development process:
-    - Use `pylint` to check the code quality.
-    - Use `pytest-cov` to check the coverage (although it will be very low).
-    - Consider relaxing the dependency version requirements to minimum, rather than strict, versions.
-    - Investigate using `tox` to run tests on with various dependency versions.
-    - Complete setting up CI/CD pipeline on Azure DevOps by:
-        - *Azure Artifacts* for a (private) Python package registry
+
+### Documentation
+- How to:
+    - Install and use
+    - Debug warnings and errors
+    - Contribute to development (this file)
+- Record version history
+- Possible formats: 
+    - (Compiled) notebook (works well on GitHub)
+    - Markdown
+
+### Development process:
+- Use `pylint` to check the code quality.
+- Use `pytest-cov` to check the coverage (although it will be very low).
+- Consider relaxing the dependency version requirements to minimum, rather than strict, versions.
+- Investigate using `tox` to run tests on with various dependency versions.
+- Complete setting up CI/CD pipeline on Azure DevOps by:
+    - *Azure Artifacts* for a (private) Python package registry
 
 <p align="right"><a href="#top">Back to top</a></p>

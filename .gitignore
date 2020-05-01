@@ -13,6 +13,10 @@
 .profile
 .python_history
 
+# Environments within the project
+env/
+venv/
+
 # --------------
 # Created by https://www.gitignore.io/api/python,windows,jupyternotebooks,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=python,windows,jupyternotebooks,visualstudiocode
