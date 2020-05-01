@@ -1,9 +1,7 @@
 <a name="top"></a>
 
-[![Build Status](https://dev.azure.com/a-breeze/premierconverter/_apis/build/status/A-Breeze.premierconverter?branchName=master)](https://dev.azure.com/a-breeze/premierconverter/_build/latest?definitionId=1&branchName=master)
-
-# Premier Converter
-Functionality to convert an Excel spreadsheet in a given format into a more useful format.
+# Premier Converter: Development notes
+Notes about how to work on this project.
 
 <!--This table of contents is maintained *manually*-->
 ## Contents
@@ -27,7 +25,7 @@ This document describes how to run the repo using JupyterLab on Binder. It *shou
 All console commands are **run from the root folder of this project** unless otherwise stated.
 
 ### Start Binder instance
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/A-Breeze/premierconverter/tidy_docs?urlpath=lab)
+See the main [`README.md`](README.md) for a link to start the Binder instance.
 
 ### Development environment
 The development requirements consist of the package dependencies, plus extra packages useful during development, as specified in `requirements_dev.txt`. They can be automatically installed into a conda-env as follows.
@@ -108,17 +106,18 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 ## Future ideas
 Backlog of all possible ideas, big or small, high priority or low.
 
-### Known issues
-- When force overwriting data into an existing sheet, only values in the affected cells are replaced. So, if there are values in any other cells, they *remain* after the data has been written. Presumably it would be more desirable to clear values from the entire sheet (but not to delete it, in case there are formulae relying on it).
-
 ### Additional functionality
+- Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
+- Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
 - Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
+- Refactor the index name `Ref_num` to be a configuration parameter.
+- Allow the user to overwrite the configuration parameters.
 - Validation checks on the consistency of premium values against what is expected.
 
 ### UI
-Create a GUI using: 
-- `tkinter` (built-in, suitable for simple applications). Alternative `PyQt5` has more complicated license arrangements and it more suitable for larger applications. Cannot develop this inside Kaggle or Binder.
-- a web framework, e.g. `bokeh`.
+- Create a GUI using: 
+    - `tkinter` (built-in, suitable for simple applications). Alternative `PyQt5` has more complicated license arrangements and it more suitable for larger applications. Cannot develop this inside Kaggle or Binder.
+    - a web framework, e.g. `bokeh`.
 
 ### Tests
 - Create up `pytest` fixtures to allow setup / teardown for the Excel spreadsheets for testing
