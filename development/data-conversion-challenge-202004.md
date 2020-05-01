@@ -124,7 +124,7 @@ print("Correct: All locations are available as expected")
 
 ```python
 # Configuration variables for the expected format and structure of the data
-excel_extensions = ['.xlsx', '.xls', '.xlsm']
+excel_extensions = ['.xlsx', '.xlsm', '.xltx', '.xltm']  # Note: .xls is *not* readable by openpyxl
 
 raw_struct = {
     'stem': {
@@ -140,6 +140,10 @@ raw_struct = {
     },
     'bp_name': 'Base Premium'
 }
+
+# Output variables, considered to be constants
+# Column name of the row IDs
+row_id_name = "Ref_num"
 ```
 
 ## Parameters
@@ -149,7 +153,10 @@ raw_struct = {
 include_factors = None
 if include_factors is None:
     include_factors = []
-    
+
+# Maximum number of rows to read in
+nrows = None
+
 # Seperator for Peril_Factor column names in output
 pf_sep = '_'
 ```
@@ -157,24 +164,74 @@ pf_sep = '_'
 ```python
 # Input file location
 in_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
-in_sheet = None
-if in_sheet is None:
-    in_sheet = 0
+in_sheet = 0
 
-# Checks
+# Checks the file exists and is an Excel file
 in_filepath = Path(in_filepath)
 if not in_filepath.is_file():
     raise FileNotFoundError(
         "\n\tin_filepath: There is no file at the input location:"
-        f"\n\t'{in_filepath}'"
+        f"\n\t'{in_filepath.absolute()}'"
         "\n\tCannot read the input data"
     )
 if not in_filepath.suffix in excel_extensions:
-    warnings.warn(
-        f"in_filepath: The input file extension '{in_filepath.suffix}' "
-        "is not a recognised Excel extension",
+    raise ValueError(
+        f"\n\tin_filepath: The input file extension '{in_filepath.suffix}'"
+        f"\n\tis not one of the recognised Excel extensions {excel_extensions}"
     )
 print("Correct: Input file exists and has an Excel extension")
+```
+
+```python
+# Check the workbook and sheet exists
+in_workbook = load_workbook(
+    in_filepath,
+    read_only=True, data_only=True, keep_links=False
+)
+if isinstance(in_sheet, int):
+    if abs(in_sheet) >= len(in_workbook.worksheets): 
+        raise ValueError(
+            f"\n\tin_sheet: The sheet number '{in_sheet}' cannot be found"
+            f"\n\tin the workbook at location:"
+            f"\n\t'{in_filepath.absolute()}'"
+        )
+    else:
+        in_sheet_obj = in_workbook.worksheets[in_sheet]
+if isinstance(in_sheet, str):
+    if in_sheet not in in_workbook.worksheets:
+        raise ValueError(
+            f"\n\tin_sheet: The sheet name '{in_sheet}' cannot be found"
+            f"\n\tin the workbook at location:"
+            f"\n\t'{in_filepath.absolute()}'"
+        )
+    else:
+        in_sheet_obj = in_workbook[in_sheet]
+if not (isinstance(in_sheet, int) or isinstance(in_sheet, str)):
+    raise ValueError(
+        "\n\tin_sheet: Must be a string or integer "
+        f"\n\tbut '{in_sheet}' of type '{type(in_sheet).__name__}' was supplied"
+    )
+print("Correct: Input sheet exists")
+```
+
+```python
+# Warn if it is not the expected shape
+in_sheet_ncols = in_sheet_obj.max_column
+if not (
+    # At least the stem columns and one factor set column
+    (in_sheet_ncols - 1) >= 
+    raw_struct['stem']['ncols'] + raw_struct['f_set']['ncols']
+) or not (
+    # Stem columns plus a multiple of factor set columns
+    (in_sheet_ncols - 1 - raw_struct['stem']['ncols']) 
+    % raw_struct['f_set']['ncols'] == 0
+):
+    warnings.warn(
+        f"Raw data: Incorrect number of columns in worksheet: {in_sheet_ncols}"
+        "\n\tThere should be: 1 for row ID, "
+        f"{raw_struct['stem']['ncols']} for stem section, "
+        f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
+    )
 ```
 
 ```python
@@ -195,7 +252,7 @@ if not out_filepath.parent.is_dir():
     )
 
 if out_filepath.is_file():
-    out_workbook = load_workbook(out_filepath)   
+    out_workbook = load_workbook(out_filepath)
     if out_sheet_name in out_workbook.sheetnames and not force_overwrite:
         raise FileExistsError(
             "\n\tOutput options: Sheet already exists at the output location:"
@@ -205,6 +262,10 @@ if out_filepath.is_file():
         )
     # Set the pandas ExcelWriter to point at this workbook
     xl_writer.book = out_workbook
+    ## ExcelWriter for some reason uses writer.sheets to access the sheet.
+    ## If you leave it empty it will not know what sheets are already there
+    ## and will create a new sheet. See: <https://stackoverflow.com/a/20221655>
+    xl_writer.sheets = dict((ws.title, ws) for ws in out_workbook.worksheets)
 else:
     if not out_filepath.suffix in excel_extensions:
         warnings.warn(
@@ -226,8 +287,8 @@ print("Correct: A suitable location for output has been chosen")
 df_raw = pd.read_excel(
     in_filepath, sheet_name=in_sheet,
     engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
-    header=None, index_col=0,
-).rename_axis(index="Ref_num")
+    header=None, index_col=0, nrows=nrows,
+).rename_axis(index=row_id_name)
 
 df_raw.head()
 ```
@@ -291,7 +352,7 @@ df_fsets = pd.concat([
         how="all"
     ).pipe(lambda df: df.rename(columns=dict(zip(  # Rename columns
         df.columns, raw_struct['f_set']['col_names']
-    )))).reset_index()  # Get 'Ref_num' as a column
+    )))).reset_index()  # Get row_ID as a column
 
     for fset_start_col in range(
         raw_struct['stem']['ncols'], df_raw.shape[1], raw_struct['f_set']['ncols']
@@ -315,11 +376,10 @@ if not (
 ```
 
 ```python
-# Get all perils in data set by looking at occurences of 'Base Premium'
 perils_implied = df_fsets.Peril_Factor.drop_duplicates(  # Get only unique 'Peril_Factor' combinations
-).to_frame().assign(  # Filter to leave only 'Base Premium' occurences
-    row_to_keep=lambda df: df.Peril_Factor.str.contains(raw_struct['bp_name'])
-).query('row_to_keep').drop(columns='row_to_keep').assign(
+).to_frame().pipe(lambda df: df.loc[  # Filter to leave only 'Base Premium' occurences
+    df.Peril_Factor.str.contains(raw_struct['bp_name']), :
+]).assign(
     # Get the 'Peril' part of 'Peril_Factor'
     Peril=lambda df: df.Peril_Factor.str.replace(raw_struct['bp_name'], "").str.strip()
 ).Peril.sort_values().to_list()
@@ -360,7 +420,7 @@ df_fsets_split.head()
 ```
 
 ```python
-# Get the Base Premiums for all Ref_nums and Perils
+# Get the Base Premiums for all row_IDs and Perils
 df_base_prems = df_fsets_split.query(
     # Get only the Base Preimum rows
     f"Factor == '{raw_struct['bp_name']}'"
@@ -369,8 +429,8 @@ df_base_prems = df_fsets_split.query(
     Peril_Factor=lambda df: df.Peril + pf_sep + df.Factor,
     Custom_order=0,  # Will be used later to ensure desired column order
 ).pivot_table(
-    # Pivot to 'Peril_Factor' columns and 'Ref_num' rows
-    index='Ref_num',
+    # Pivot to 'Peril_Factor' columns and one row per row_ID
+    index=row_id_name,
     columns=['Peril', 'Custom_order', 'Peril_Factor'],
     values='Premium_cumulative'
 )
@@ -388,18 +448,18 @@ if df_base_prems.isna().sum().sum() > 0:
 ```
 
 ```python
-# Ensure every Ref_num has a row for every Peril, Factor combination
-# Get the Relativity for all Ref_nums, Perils and Factors
+# Ensure every row_ID has a row for every Peril, Factor combination
+# Get the Relativity for all row_ID, Perils and Factors
 df_factors = df_fsets_split.query(
     # Get only the Factor rows
     f"Factor != '{raw_struct['bp_name']}'"
 ).drop(
     columns=['Premium_increment', 'Premium_cumulative']
 ).set_index(
-    # Ensure there is one row for every combination of Ref_num, Peril, Factor
-    ['Ref_num', 'Peril', 'Factor']
+    # Ensure there is one row for every combination of row_ID, Peril, Factor
+    [row_id_name, 'Peril', 'Factor']
 ).pipe(lambda df: df.reindex(index=pd.MultiIndex.from_product([
-    df.index.get_level_values('Ref_num').unique(),
+    df.index.get_level_values(row_id_name).unique(),
     df.index.get_level_values('Peril').unique(),
     # Include additional factors if desired from the inputs
     set(df.index.get_level_values('Factor').tolist() + include_factors),
@@ -411,8 +471,8 @@ df_factors = df_fsets_split.query(
     Peril_Factor=lambda df: df.Peril + pf_sep + df.Factor,
     Custom_order=1
 ).pivot_table(
-    # Pivot to 'Peril_Factor' columns and 'Ref_num' rows
-    index='Ref_num',
+    # Pivot to 'Peril_Factor' columns and one row per row_ID
+    index=row_id_name,
     columns=['Peril', 'Custom_order', 'Peril_Factor'],
     values='Relativity'
 )
@@ -554,13 +614,8 @@ df_formatted.head()
 df_reload = PCon.load_formatted_spreadsheet(res_filepath, res_sheet_name)
 
 # Check it matches expectations
-assert (df_formatted.dtypes == df_reload.dtypes).all()
-assert df_reload.shape == df_formatted.shape
-assert (df_formatted.index == df_reload.index).all()
-assert df_formatted.iloc[:,1:].apply(
-    lambda col: np.abs(col - df_reload[col.name]) < 1e-10
-).all().all()
-print("Correct: The reloaded values are equal, up to floating point tolerance")
+if PCon.formatted_dfs_are_equal(df_formatted, df_reload):
+    print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
 
 ```python
@@ -570,13 +625,8 @@ expected_sheet = 'expected_result'
 df_expected = PCon.load_formatted_spreadsheet(expected_filepath, expected_sheet)
 
 # Check it matches expectations
-assert (df_formatted.dtypes == df_expected.dtypes).all()
-assert df_expected.shape == df_formatted.shape
-assert (df_formatted.index == df_expected.index).all()
-assert df_formatted.iloc[:,1:].apply(
-    lambda col: np.abs(col - df_expected[col.name]) < 1e-10
-).all().all()
-print("Correct: The reloaded values are equal, up to floating point tolerance")
+if PCon.formatted_dfs_are_equal(df_formatted, df_expected):
+    print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
 
 ```python

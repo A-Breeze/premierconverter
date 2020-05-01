@@ -108,22 +108,21 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 ## Future ideas
 Backlog of all possible ideas, big or small, high priority or low.
 
+### Known issues
+- When force overwriting data into an existing sheet, only values in the affected cells are replaced. So, if there are values in any other cells, they *remain* after the data has been written. Presumably it would be more desirable to clear values from the entire sheet (but not to delete it, in case there are formulae relying on it).
+
 ### Additional functionality
-- Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
-- Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
 - Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
-- Refactor the index name `Ref_num` to be a configuration parameter.
-- Allow the user to overwrite the configuration parameters.
 - Validation checks on the consistency of premium values against what is expected.
 
 ### UI
-- Allow the functionality to be used as a CLI using the `click` package.
-- Create a GUI using: 
-    - `tkinter` (built-in, suitable for simple applications). Alternative `PyQt5` has more complicated license arrangements and it more suitable for larger applications. Cannot develop this inside Kaggle or Binder.
-    - a web framework, e.g. `bokeh`.
+Create a GUI using: 
+- `tkinter` (built-in, suitable for simple applications). Alternative `PyQt5` has more complicated license arrangements and it more suitable for larger applications. Cannot develop this inside Kaggle or Binder.
+- a web framework, e.g. `bokeh`.
 
 ### Tests
 - Create up `pytest` fixtures to allow setup / teardown for the Excel spreadsheets for testing
+- Create tests for the `click` CLI
 - Aspects to test:
     - Expected functionality
     - Expected failures / warnings

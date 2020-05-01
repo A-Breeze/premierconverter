@@ -7,6 +7,7 @@ Notes about the example data files for use in the project.
 ## Contents
 1. [Important information](#Important-information)
 1. [Example files](#Example-files)
+1. [Further notes](#Further-notes)
 
 <p align="right"><a href="#top">Back to top</a></p>
 
@@ -28,5 +29,10 @@ Specific functionality included:
 - Consistent values for the value fields.
 - Relativity that is so close to 1 that the incremental premium is zero.
 - Example of an error row (1)
+
+<p align="right"><a href="#top">Back to top</a></p>
+
+## Further notes
+- Excel 'trims' excess columns and rows when a workbook is saved, so we'll assume that there will be values in the right-most column and lowest row (and we don't need to test for it). There could be a column with no value, but with formatting (or included for some other reason). This has not been tested.
 
 <p align="right"><a href="#top">Back to top</a></p>

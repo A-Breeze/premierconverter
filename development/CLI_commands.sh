@@ -51,12 +51,13 @@ set -x
 # python -m premierconverter $EX_DATA_DIR/there_is_no_file_here  # Error because file does not exist
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx  # Error because out_filename is required
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx -i "no_sheet" out_data.xlsx  # Error because sheet does not exist
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx -i "2" out_data.xlsx  # Error because sheet not correctly formatted
+# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx -i "2" out_data.xlsx  # Warning and error because sheet not correctly formatted
 
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx  # Creates output
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx  # Fails because the output already exists
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -o "S2"  # Suceeds to another sheet
+# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -o "3rows" # Suceeds to another sheet
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx --force  # Forces overwriting to occur
+# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -o "3rows" -r 3 -n --force # Try some other options
 
 ############
 # Clean up #
