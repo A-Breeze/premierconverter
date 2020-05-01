@@ -66,7 +66,7 @@ pytest
 ```
 
 ### Build package
-The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` (for some intermediate files) and `dist/` (for the final source and wheel distributions) subfolders.
+The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` (for some intermediate files from the wheel build) and `dist/` (for the final source and wheel distributions) subfolders.
 ```
 python setup.py sdist bdist_wheel
 ```
@@ -76,7 +76,10 @@ python setup.py sdist bdist_wheel
 python -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install ./dist/premierconverter-0.1.2.tar.gz  # Specify the desired version
+pip install ./dist/premierconverter-*.whl  # For the wheel (including dependencies)
+# For the source, we first need to install dependencies
+pip install -r requirements.txt
+pip install ./dist/premierconverter-*.tar.gz
 ```
 
 ### Compile development notebooks
