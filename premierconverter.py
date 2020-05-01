@@ -2,7 +2,7 @@
 Automate the conversion of raw data into a specified format of data to make it more usable
 """
 
-__version__ = '0.1.2'
+__version__ = '0.2.1'
 
 #########
 # Setup #
@@ -15,9 +15,10 @@ import warnings
 import numpy as np
 import pandas as pd
 from openpyxl import load_workbook
+import click
 
 # Configuration variables for the expected format and structure of the data
-excel_extensions = ['.xlsx', '.xls', '.xlsm']
+excel_extensions = ['.xlsx', '.xlsm', '.xltx', '.xltm']  # Note: .xls is *not* readable by openpyxl
 
 raw_struct = {
     'stem': {
@@ -34,29 +35,81 @@ raw_struct = {
     'bp_name': 'Base Premium'
 }
 
+# Output variables, considered to be constants
+# Column name of the row IDs
+row_id_name = "Ref_num"
+
 ######################
 # Workflow functions #
 ######################
-def validate_input_filepath(input_filepath):
-    """Checks on input_filepath"""    
-    if not input_filepath.is_file():
+def validate_input_options(in_filepath, in_sheet):
+    """Checks on in_filepath and in_sheet"""
+    # Checks the file exists and is an Excel file
+    if not in_filepath.is_file():
         raise FileNotFoundError(
-            "\n\tinput_filepath: There is no file at the input location:"
-            f"\n\t'{input_filepath}'"
+            "\n\tin_filepath: There is no file at the input location:"
+            f"\n\t'{in_filepath.absolute()}'"
             "\n\tCannot read the input data"
         )
-    if not input_filepath.suffix in excel_extensions:
-        warnings.warn(
-            f"input_filepath: The input file extension '{input_filepath.suffix}' "
-            "is not a recognised Excel extension",
+    if not in_filepath.suffix in excel_extensions:
+        raise ValueError(
+            f"\n\tin_filepath: The input file extension '{in_filepath.suffix}'"
+            f"\n\tis not one of the recognised Excel extensions {excel_extensions}"
         )
+    
+    # Check the workbook and sheet exists
+    in_workbook = load_workbook(
+        in_filepath,
+        read_only=True, data_only=True, keep_links=False
+    )
+    if isinstance(in_sheet, int):
+        if abs(in_sheet) >= len(in_workbook.worksheets): 
+            raise ValueError(
+                f"\n\tin_sheet: The sheet number '{in_sheet}' cannot be found"
+                f"\n\tin the workbook at location:"
+                f"\n\t'{in_filepath.absolute()}'"
+            )
+        else:
+            in_sheet_obj = in_workbook.worksheets[in_sheet]
+    if isinstance(in_sheet, str):
+        if in_sheet not in in_workbook.worksheets:
+            raise ValueError(
+                f"\n\tin_sheet: The sheet name '{in_sheet}' cannot be found"
+                f"\n\tin the workbook at location:"
+                f"\n\t'{in_filepath.absolute()}'"
+            )
+        else:
+            in_sheet_obj = in_workbook[in_sheet]
+    if not (isinstance(in_sheet, int) or isinstance(in_sheet, str)):
+        raise ValueError(
+            "\n\tin_sheet: Must be a string or integer "
+            f"\n\tbut '{in_sheet}' of type '{type(in_sheet).__name__}' was supplied"
+        )
+    
+    # Warn if it is not the expected shape
+    in_sheet_ncols = in_sheet_obj.max_column
+    if not (
+        # At least the stem columns and one factor set column
+        (in_sheet_ncols - 1) >= 
+        raw_struct['stem']['ncols'] + raw_struct['f_set']['ncols']
+    ) or not (
+        # Stem columns plus a multiple of factor set columns
+        (in_sheet_ncols - 1 - raw_struct['stem']['ncols']) 
+        % raw_struct['f_set']['ncols'] == 0
+    ):
+        warnings.warn(
+            f"Raw data: Incorrect number of columns in worksheet: {in_sheet_ncols}"
+            "\n\tThere should be: 1 for row ID, "
+            f"{raw_struct['stem']['ncols']} for stem section, "
+            f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
+        )
+    
     return(None)
 
 
 def validate_output_options(out_filepath, out_sheet_name, force_overwrite):
     """
     Checks on out_filepath and out_sheet_name
-    
     Returns: pd.ExcelWriter to use when saving the output
     """
     xl_writer = pd.ExcelWriter(out_filepath, engine = 'openpyxl')
@@ -69,7 +122,7 @@ def validate_output_options(out_filepath, out_sheet_name, force_overwrite):
         )
 
     if out_filepath.is_file():
-        out_workbook = load_workbook(out_filepath)   
+        out_workbook = load_workbook(out_filepath)
         if out_sheet_name in out_workbook.sheetnames and not force_overwrite:
             raise FileExistsError(
                 "\n\tOutput options: Sheet already exists at the output location:"
@@ -79,6 +132,11 @@ def validate_output_options(out_filepath, out_sheet_name, force_overwrite):
             )
         # Set the pandas ExcelWriter to point at this workbook
         xl_writer.book = out_workbook
+        
+        ## ExcelWriter for some reason uses writer.sheets to access the sheet.
+        ## If you leave it empty it will not know what sheets are already there
+        ## and will create a new sheet. See: <https://stackoverflow.com/a/20221655>
+        xl_writer.sheets = dict((ws.title, ws) for ws in out_workbook.worksheets)
     else:
         if not out_filepath.suffix in excel_extensions:
             warnings.warn(
@@ -88,39 +146,26 @@ def validate_output_options(out_filepath, out_sheet_name, force_overwrite):
     return(xl_writer)
 
 
-def read_raw_data(input_filepath, input_sheet=None):
+def read_raw_data(in_filepath, in_sheet=0, nrows=None):
     """
     Load data from spreadsheet
     
-    input_filepath: Location of the Excel file to read
-    input_sheet: None or 0 for the first sheet, or the name of a sheet
-    """
-    # Set defaults
-    if input_sheet is None:
-        input_sheet = 0
-    
+    in_filepath: Location of the Excel file to read
+    in_sheet: Sheet number (starting from 0), or sheet name to read
+    nrows: Maximum number of rows to read
+    """   
     df_raw = pd.read_excel(
-        input_filepath, sheet_name=input_sheet,
+        in_filepath, sheet_name=in_sheet,
         engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
-        header=None, index_col=0,
-    ).rename_axis(index="Ref_num")
+        header=None, index_col=0, nrows=nrows,
+    ).rename_axis(index=row_id_name)
     
     return(df_raw)
 
 
 def validate_raw_data(df_raw):
     """Checks on the loaded raw data"""
-    if not (
-        (df_raw.shape[1] - raw_struct['stem']['ncols']) 
-        % raw_struct['f_set']['ncols'] == 0
-    ):
-        warnings.warn(
-            f"Raw data: Incorrect number of columns: {df_raw.shape[1]}"
-            "\n\tThere should be: 1 for index, "
-            f"{raw_struct['stem']['ncols']} for stem section, "
-            f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
-        )
-    return(None)
+    pass  # None currently. Checks are either before loading or after splitting
 
 
 def get_stem_columns(df_raw):
@@ -162,7 +207,7 @@ def get_factor_sets(df_raw):
             how="all"
         ).pipe(lambda df: df.rename(columns=dict(zip(  # Rename columns
             df.columns, raw_struct['f_set']['col_names']
-        )))).reset_index()  # Get 'Ref_num' as a column
+        )))).reset_index()  # Get row_ID as a column
 
         for fset_start_col in range(
             raw_struct['stem']['ncols'], df_raw.shape[1], raw_struct['f_set']['ncols']
@@ -187,16 +232,15 @@ def validate_factor_sets(df_fsets):
 
 
 def get_implied_perils(df_fsets):
-    """Get all perils in data set by looking at occurences of 'Base Premium'"""
-    perils = df_fsets.Peril_Factor.drop_duplicates(  # Get only unique 'Peril_Factor' combinations
-    ).to_frame().assign(  # Filter to leave only 'Base Premium' occurences
-        row_to_keep=lambda df: df.Peril_Factor.str.contains(raw_struct['bp_name'])
-    ).query('row_to_keep').drop(columns='row_to_keep').assign(
+    """Get all perils in data set by looking at occurences of 'Base Premium'"""   
+    perils_implied = df_fsets.Peril_Factor.drop_duplicates(  # Get only unique 'Peril_Factor' combinations
+    ).to_frame().pipe(lambda df: df.loc[  # Filter to leave only 'Base Premium' occurences
+        df.Peril_Factor.str.contains(raw_struct['bp_name']), :
+    ]).assign(
         # Get the 'Peril' part of 'Peril_Factor'
         Peril=lambda df: df.Peril_Factor.str.replace(raw_struct['bp_name'], "").str.strip()
     ).Peril.sort_values().to_list()
-    
-    return(perils)
+    return(perils_implied)
 
 
 def validate_peril_factors(df_fsets, perils_implied):
@@ -235,7 +279,7 @@ def split_peril_factor(df_fsets, perils_implied):
 
 def get_base_prems(df_fsets_split, pf_sep="_"):
     """
-    Get the Base Premiums for all Ref_nums and Perils
+    Get the Base Premiums for all row_IDs and Perils
     
     pf_sep: Seperator for Peril_Factor column names in output
     """
@@ -247,8 +291,8 @@ def get_base_prems(df_fsets_split, pf_sep="_"):
         Peril_Factor=lambda df: df.Peril + pf_sep + df.Factor,
         Custom_order=0,  # Will be used later to ensure desired column order
     ).pivot_table(
-        # Pivot to 'Peril_Factor' columns and 'Ref_num' rows
-        index='Ref_num',
+        # Pivot to 'Peril_Factor' columns and one row per row_ID
+        index=row_id_name,
         columns=['Peril', 'Custom_order', 'Peril_Factor'],
         values='Premium_cumulative'
     )
@@ -272,8 +316,8 @@ def get_all_factor_relativities(
     pf_sep='_'
 ):
     """
-    Ensure every Ref_num has a row for every Peril, Factor combination
-    Get the Relativity for all Ref_nums, Perils and Factors
+    Ensure every row_ID has a row for every Peril, Factor combination
+    Get the Relativity for all row_ID, Perils and Factors
     
     include_factors: If any of the factors in this list are not implied 
         in the data, then such factors are also returned in the output.
@@ -290,10 +334,10 @@ def get_all_factor_relativities(
     ).drop(
         columns=['Premium_increment', 'Premium_cumulative']
     ).set_index(
-        # Ensure there is one row for every combination of Ref_num, Peril, Factor
-        ['Ref_num', 'Peril', 'Factor']
+        # Ensure there is one row for every combination of row_ID, Peril, Factor
+        [row_id_name, 'Peril', 'Factor']
     ).pipe(lambda df: df.reindex(index=pd.MultiIndex.from_product([
-        df.index.get_level_values('Ref_num').unique(),
+        df.index.get_level_values(row_id_name).unique(),
         df.index.get_level_values('Peril').unique(),
         # Include additional factors if desired from the inputs
         set(df.index.get_level_values('Factor').tolist() + include_factors),
@@ -305,8 +349,8 @@ def get_all_factor_relativities(
         Peril_Factor=lambda df: df.Peril + pf_sep + df.Factor,
         Custom_order=1
     ).pivot_table(
-        # Pivot to 'Peril_Factor' columns and 'Ref_num' rows
-        index='Ref_num',
+        # Pivot to 'Peril_Factor' columns and one row per row_ID
+        index=row_id_name,
         columns=['Peril', 'Custom_order', 'Peril_Factor'],
         values='Relativity'
     )
@@ -369,7 +413,7 @@ def convert_df(
     
     include_factors: If any of the factors in this list are not implied 
         in the data, then such factors are also returned in the output.
-    pf_sep: Seperator for Peril_Factor column names in output
+    pf_sep: Seperator for Peril_Factor column names in output.
     with_validation: Set to False to stop optional validation checks from
         running (which might make this function run a little faster).
     """
@@ -407,42 +451,52 @@ def convert_df(
 
 
 def convert(
-    input_filepath,
-    input_sheet=None,
-    out_filepath='formatted_data.xlsx',
+    in_filepath,
+    out_filepath,
+    in_sheet=0,
     out_sheet_name='Sheet1',
     force_overwrite=False,
+    nrows=None,
     **kwargs,
 ):
     """
     Load raw data from Excel, convert to specified format, and save result
     
-    input_filepath: Excel file containing a sheet with the raw data
-    input_sheet: None or 0 for the first sheet, or the name of a sheet
+    in_filepath: Path to Excel file containing a sheet with the raw data
     out_filepath: Path of an Excel file to save the formatted data
+        If it does not exist, a new workbook will be created.
+        The directory must already exist.
+    
+    in_sheet: Sheet number (starting from 0) or sheet name to read
     out_sheet_name: Name of the sheet to save the formatted data
     force_overwrite: Set to True if you want to overwrite the existing workbook sheet
-    **kwargs: Arguments to pass to convert_df
+
+    nrows: Maximum number of rows to read
+    **kwargs: Other arguments to pass to convert_df
     
     Returns: (out_filepath, out_sheet_name) if it completes
     """
     # Set defaults
-    input_filepath = Path(input_filepath)
+    in_filepath = Path(in_filepath)
     out_filepath = Path(out_filepath)
     
     # Validate function inputs
-    validate_input_filepath(input_filepath)
+    validate_input_options(in_filepath, in_sheet)
     xl_writer = validate_output_options(out_filepath, out_sheet_name, force_overwrite)
     
     # Load raw data
-    df_raw = read_raw_data(input_filepath, input_sheet)
+    df_raw = read_raw_data(in_filepath, in_sheet, nrows)
     
     # Get converted DataFrame
     df_formatted = convert_df(df_raw, **kwargs)
     
     # Save results to a workbook
     if save_to_workbook(df_formatted, xl_writer, out_sheet_name):
-        print("Output saved")
+        print(
+            "Output saved"
+            f"\nFile:\t{out_filepath.absolute()}"
+            f"\nSheet:\t{out_sheet_name}"
+        )
     
     return((out_filepath, out_sheet_name))
 
@@ -465,3 +519,109 @@ def load_formatted_spreadsheet(out_filepath, out_sheet_name):
         else col.astype('float')
     ))
     return(df_reload)
+
+def formatted_dfs_are_equal(df1, df2, tol=1e-10):
+    """Reasonableness checks between two DataFrames of output format"""
+    assert df1.shape == df2.shape
+    assert (df1.index == df2.index).all()
+    assert (df1.dtypes == df2.dtypes).all()
+    assert df1.iloc[:,1:].apply(
+        lambda col: np.abs(col - df2[col.name]) < tol
+    ).all().all()
+    return(True)
+
+######################
+# Make CLI available #
+######################
+@click.command(context_settings = dict(
+    help_option_names = ['-h', '--help']
+))
+@click.version_option(__version__)
+@click.argument(
+    'in_filepath',
+    type = click.Path(exists=True),
+    required=True,
+    metavar = '<input filepath>',
+)
+@click.argument(
+    'out_filepath',
+    type = click.Path(),
+    required=True,
+    metavar = '<output filepath>',
+)
+@click.option(
+    '--in_sheet', '-i', 'in_sheet',
+    default="0", show_default=True,
+    help='Sheet number (starting from 0) or sheet name to read.',
+)
+@click.option(
+    '--out_sheet', '-o', 'out_sheet_name',
+    default="Sheet1", show_default=True,
+    help='Name of the sheet to save the formatted data.',
+)
+@click.option(
+    '--force', 'force_overwrite',
+    is_flag=True,
+    help='Overwrite an existing output worksheet.',
+)
+@click.option(
+    '--nrows', '-r', 'nrows',
+    type=int, default=None, show_default=True,
+    help='Maximum number of rows to read.',
+)
+@click.option(
+    '--no_checks', '-n', 'no_checks',
+    is_flag=True,
+    help='Stop optional validation checks from running.',
+)
+def cli(
+    in_filepath,
+    out_filepath,
+    # Default values for these arguments are given above
+    in_sheet,
+    out_sheet_name,
+    force_overwrite,
+    nrows,
+    no_checks,
+):
+    """
+    Load raw data from Excel, convert to specified format, and save result
+    
+    <input filepath>: Path to Excel file containing a sheet with the raw data
+    
+    <output filepath>: Path where the resulting Excel file should go.
+    If it does not exist, a new workbook will be created.
+    The directory must already exist.
+    """
+    # Format inputs
+    # in_sheet passed from click is a string
+    # Convert it to an int if possible
+    try: 
+        in_sheet = int(in_sheet)
+    except ValueError:
+        pass
+    
+    # Pass parameters to convert()
+    convert(
+        in_filepath = in_filepath,
+        out_filepath = out_filepath,
+        in_sheet = in_sheet,
+        out_sheet_name = out_sheet_name,
+        force_overwrite = force_overwrite,
+        nrows = nrows,
+        with_validation = not no_checks,
+    )
+    return(None)
+
+# Identifying whether this script is being run on Kaggle
+# allows a Full Version of the script to be saved
+# (i.e. without an error occurring).
+on_kaggle = False
+if str(Path().absolute()) == '/kaggle/working':
+    on_kaggle = True
+
+if __name__ == '__main__':
+    if on_kaggle:
+        print("Script run complete")
+    else:
+        cli()

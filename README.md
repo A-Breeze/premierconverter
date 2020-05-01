@@ -16,6 +16,8 @@ Functionality to convert an Excel spreadsheet in a given format into a more usef
     - [Run automated tests](#Run-automated-tests)
     - [Build package](#Build-package)
     - [Compile development notebooks](#Compile-development-notebooks)
+1. [Further notes](#Further-notes)
+1. [Future ideas](#Future-ideas)
 
 <p align="right"><a href="#top">Back to top</a></p>
 
@@ -25,7 +27,7 @@ This document describes how to run the repo using JupyterLab on Binder. It *shou
 All console commands are **run from the root folder of this project** unless otherwise stated.
 
 ### Start Binder instance
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/A-Breeze/premierconverter/master?urlpath=lab)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/A-Breeze/premierconverter/add_CLI?urlpath=lab)
 
 ### Development environment
 The development requirements consist of the package dependencies, plus extra packages useful during development, as specified in `requirements_dev.txt`. They can be automatically installed into a conda-env as follows.
@@ -64,7 +66,7 @@ pytest
 ```
 
 ### Build package
-The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` (for some intermediate files) and `dist/` (for the final source and wheel distributions) subfolders.
+The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` (for some intermediate files from the wheel build) and `dist/` (for the final source and wheel distributions) subfolders.
 ```
 python setup.py sdist bdist_wheel
 ```
@@ -74,7 +76,10 @@ python setup.py sdist bdist_wheel
 python -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install ./dist/premierconverter-0.1.2.tar.gz  # Specify the desired version
+pip install ./dist/premierconverter-*.whl  # For the wheel (including dependencies)
+# For the source, we first need to install dependencies
+pip install -r requirements.txt
+pip install ./dist/premierconverter-*.tar.gz
 ```
 
 ### Compile development notebooks
@@ -95,37 +100,51 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 ### Research notes
 - Example of a package that consists of just one module: <https://github.com/benjaminp/six>
 - Worked example of creating an Azure Pipeline to test, build and publish a Python package as an Azure Artifact: <https://medium.com/raa-labs/creating-a-pipeline-in-azure-devops-to-build-and-publish-python-packages-artifacts-ea2f99410e6c>
+- Using `click` to create a CLI from Python functions: <https://dbader.org/blog/python-commandline-tools-with-click>
+- How to make a Python script executable from the command line (in Linux): <https://dbader.org/blog/how-to-make-command-line-commands-with-python>
 
-### Future ideas
+<p align="right"><a href="#top">Back to top</a></p>
+
+## Future ideas
 Backlog of all possible ideas, big or small, high priority or low.
-- Additional functionality:
-    - Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
-    - Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
-    - Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
-    - Refactor the index name `Ref_num` to be a configuration parameter.
-    - Allow the user to overwrite the configuration parameters.
-    - Validation checks on the consistency of premium values against what is expected.
-    - Allow the functionality to be used as a CLI using the `click` package.
-- Tests:
+
+### Known issues
+- When force overwriting data into an existing sheet, only values in the affected cells are replaced. So, if there are values in any other cells, they *remain* after the data has been written. Presumably it would be more desirable to clear values from the entire sheet (but not to delete it, in case there are formulae relying on it).
+
+### Additional functionality
+- Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
+- Validation checks on the consistency of premium values against what is expected.
+
+### UI
+Create a GUI using: 
+- `tkinter` (built-in, suitable for simple applications). Alternative `PyQt5` has more complicated license arrangements and it more suitable for larger applications. Cannot develop this inside Kaggle or Binder.
+- a web framework, e.g. `bokeh`.
+
+### Tests
+- Create up `pytest` fixtures to allow setup / teardown for the Excel spreadsheets for testing
+- Create tests for the `click` CLI
+- Aspects to test:
     - Expected functionality
     - Expected failures / warnings
     - Edge cases
     - Benchmark performance
-- Documentation:
-    - How to:
-        - Install and use
-        - Debug warnings and errors
-        - Contribute to development (this file)
-    - Record version history
-    - Possible formats: 
-        - (Compiled) notebook (works well on GitHub)
-        - Markdown
-- Development process:
-    - Use `pylint` to check the code quality.
-    - Use `pytest-cov` to check the coverage (although it will be very low).
-    - Consider relaxing the dependency version requirements to minimum, rather than strict, versions.
-    - Investigate using `tox` to run tests on with various dependency versions.
-    - Complete setting up CI/CD pipeline on Azure DevOps by:
-        - *Azure Artifacts* for a (private) Python package registry
+
+### Documentation
+- How to:
+    - Install and use
+    - Debug warnings and errors
+    - Contribute to development (this file)
+- Record version history
+- Possible formats: 
+    - (Compiled) notebook (works well on GitHub)
+    - Markdown
+
+### Development process:
+- Use `pylint` to check the code quality.
+- Use `pytest-cov` to check the coverage (although it will be very low).
+- Consider relaxing the dependency version requirements to minimum, rather than strict, versions.
+- Investigate using `tox` to run tests on with various dependency versions.
+- Complete setting up CI/CD pipeline on Azure DevOps by:
+    - *Azure Artifacts* for a (private) Python package registry
 
 <p align="right"><a href="#top">Back to top</a></p>
