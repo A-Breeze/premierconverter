@@ -106,12 +106,12 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 ## Future ideas
 Backlog of all possible ideas, big or small, high priority or low.
 
+### Known issues
+- When you set `force_overwrite=True` to write data into an existing worksheet, only values in the affected cells are replaced. So, if there are values in any other cells prior to running the app, they *remain* after the data has been written. Presumably it would be more desirable to clear values from the entire sheet (but not to delete it, in case there are formulae relying on it).
+
 ### Additional functionality
-- Argument to only read in the first `n_row` rows of the raw data, so that you can test it on a small sample before running the whole pipeline.
-- Once raw data has been read in, delete empty columns from the right and empty rows from the bottom, so they are not counted for validation.
+- Allow the default of `output_sheet_name` to be the *first* sheet in the workbook (i.e. guaranteed to exist for existing workbooks), rather than `Sheet1`. This avoids the situation where the user is expecting to overwrite a one-sheet workbook, but the sheet is not called `Sheet1`.
 - Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
-- Refactor the index name `Ref_num` to be a configuration parameter.
-- Allow the user to overwrite the configuration parameters.
 - Validation checks on the consistency of premium values against what is expected.
 
 ### UI
