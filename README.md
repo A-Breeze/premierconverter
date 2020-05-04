@@ -38,7 +38,7 @@ You need `conda` and `pip` available and working in a console (e.g. from Anacond
 1. Download the following files from the project repo into a folder anywhere your computer:
     - Code module: [`premierconverter.py`](premierconverter.py).
     - Environment specification: [`deploy_env.yml`](deploy_env.yml) and [`requirements.txt`](requirements.txt).
-    - Package specification: [`setup.py`](setup.py)
+    - Package specification: [`setup.py`](setup.py) and [`MANIFEST.in`](MANIFEST.in).
 
     To download a single file from GitHub you need to:
     1. Go to the file's page in the repo, e.g. [`premierconverter.py`](premierconverter.py).
