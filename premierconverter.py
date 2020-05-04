@@ -2,7 +2,7 @@
 Automate the conversion of raw data into a specified format of data to make it more usable
 """
 
-__version__ = '0.2.3'
+__version__ = '0.2.3'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
 
 #########
 # Setup #
@@ -72,7 +72,7 @@ def validate_input_options(in_filepath, in_sheet):
         else:
             in_sheet_obj = in_workbook.worksheets[in_sheet]
     if isinstance(in_sheet, str):
-        if in_sheet not in in_workbook.worksheets:
+        if in_sheet not in in_workbook.sheetnames:
             raise ValueError(
                 f"\n\tin_sheet: The sheet name '{in_sheet}' cannot be found"
                 f"\n\tin the workbook at location:"

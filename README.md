@@ -94,7 +94,7 @@ The core functionality can be accessed from the console without needing to start
     ```
 - **Input worksheets**: Suppose the input workbook contains multiple worksheets, of which you want to use the sheet named `my_sheet` - use the `-i` option.
     ```
-    python -m premierconverter "data/input raw.xlsx" "formatted data.xlsx" -i `my_sheet`
+    python -m premierconverter "data/input raw.xlsx" "formatted data.xlsx" -i "my_sheet"
     ```
     Instead of the sheet name, you can alternatively give the sheet order number, but *be careful*: they are number starting from the first sheet being number `0` (not `1`).
 - **Combination of options**: Any combination of the above options is permitted. The restrictions are:
