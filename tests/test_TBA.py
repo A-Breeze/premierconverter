@@ -7,4 +7,4 @@ def test_TBA():
     # When
 
     # Then
-    assert PCon.__version__ == '0.2.1'
+    assert PCon.__version__ == '0.2.3'
