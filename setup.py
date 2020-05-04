@@ -13,14 +13,14 @@ import io
 import os
 from setuptools import setup
 
-import premierconverter
-
 # Package meta-data
 NAME = 'premierconverter'
+VERSION = '0.2.3'  # Ensure this is kept in-sync with __version__ in the code module
 DESCRIPTION = 'Convert specified data into a more usable format.'
 URL = 'project URL TBA'
 EMAIL = 'maintainer@email.TBA'
 AUTHOR = 'author name TBA'
+REQUIRES_PYTHON = '>=3.6.0'
 
 # What packages are required for this module to be executed?
 def list_reqs(fname='requirements.txt'):
@@ -42,7 +42,7 @@ except FileNotFoundError:
 setup(
     # Package metadata
     name=NAME,
-    version=premierconverter.__version__,
+    version=VERSION,
     description=DESCRIPTION,
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -50,13 +50,16 @@ setup(
     author_email=EMAIL,
     url=URL,
 
-    # Package contents and dependencies
+    # Package contents
     py_modules=[NAME],  # For a package that consists of just one module
     # packages=setuptools.find_packages(exclude=('tests',)),
+    # package_data={NAME: ['VERSION',]},
+    include_package_data=True,
+
+    # Package dependencies
+    python_requires=REQUIRES_PYTHON,
     install_requires=list_reqs(),
     extras_require={},
-    package_data={NAME: ['VERSION',]},
-    include_package_data=True,
 
     # Additional info
     license='MIT',

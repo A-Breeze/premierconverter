@@ -57,7 +57,9 @@ set -x
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx  # Fails because the output already exists
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -o "3rows" # Suceeds to another sheet
 # python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx --force  # Forces overwriting to occur
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -o "3rows" -r 3 -n --force # Try some other options
+
+# Try some other options
+# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -i "Sheet1" -o "3rows" -r 3 -n --force
 
 ############
 # Clean up #
