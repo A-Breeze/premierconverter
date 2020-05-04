@@ -13,7 +13,7 @@ Functionality to convert an Excel spreadsheet in a given format into a more usef
 1. [Important notes](#Important-notes)
 1. [Installation](#Installation): Pre-requisites, Instructions, Explanation
 1. [How to use](#How-to-use)
-    - [Commandline interface (CLI)](#Commandline-interface-(CLI))
+    - [Commandline interface (CLI)](#Commandline-interface-CLI)
     - [Python module](#Python-module)
 1. [Understanding and debugging](#Understanding-and-debugging)
     - [Known issues](#Known-issues)
