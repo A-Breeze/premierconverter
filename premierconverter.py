@@ -2,7 +2,7 @@
 Automate the conversion of raw data into a specified format of data to make it more usable
 """
 
-__version__ = '0.2.3'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
+__version__ = '0.3.0'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
 
 #########
 # Setup #

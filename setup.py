@@ -15,7 +15,7 @@ from setuptools import setup
 
 # Package meta-data
 NAME = 'premierconverter'
-VERSION = '0.2.3'  # Ensure this is kept in-sync with __version__ in the code module
+VERSION = '0.3.0'  # Ensure this is kept in-sync with __version__ in the code module
 DESCRIPTION = 'Convert specified data into a more usable format.'
 URL = 'project URL TBA'
 EMAIL = 'maintainer@email.TBA'
