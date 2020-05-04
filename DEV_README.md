@@ -42,7 +42,24 @@ The development requirements consist of the package dependencies, plus extra pac
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Structure of the repo
-**TODO**: Describe the structure
+### Package
+- `README.md`: Main introduction to package. Additional resources in `img/`.
+- `premierconverter.py`: The code module that contains all the Python package code.
+- `setup.py`, `MANIFEST.in`, `requirements.txt`: Specifications to build the package.
+- `LICENSE`: Terms of use.
+
+### Package data
+- `example_data/`: Docs and data to use during development and include in the package. No data is currently committed to the repo.
+- `proj_config.py`: Store the repo structure in variables so that scripts throughout the project can access relevant locations of the project.
+
+### Development
+- `DEV_README.md`: Information for developing the package.
+- `binder/` and `requirements_dev.txt`: Development environment specifications for launching Binder.
+- `development/`: Code and docs used during development. Manually kept in sync with package code base. Could form the basis of future code additions or automated tests.
+
+### CI/CD
+- `tests/`: Automated tests on the package.
+- `azure-pipelines` and `azure_templates/`: Specifications for tasks to run in the CI pipeline on the Azure Pipeline.
 
 <p align="right"><a href="#top">Back to top</a></p>
 
