@@ -42,7 +42,8 @@ You need `conda` and `pip` available and working in a console (e.g. from Anacond
 
     To download a single file from GitHub you need to:
     1. Go to the file's page in the repo, e.g. [`premierconverter.py`](premierconverter.py).
-    1. Click to view the **Raw** version of the file (button at the top right of the file contents).
+    1. Click to view the **Raw** version of the file 
+        - Button at the top right of the file contents: <img src="img/gh_raw_button_screenshot.png" alt="GitHub Raw button screenshot" width="200">
     1. You are directed to a page with the file's content only. Right click and **Save as...** into the location you want. Save the file with the *original* file extension (e.g. `.py` not `.py.txt`).
 1. Open a console and navigate to the folder where you saved the files.
 1. Create the `conda` environment from which the `premierconverter` app will be run:
