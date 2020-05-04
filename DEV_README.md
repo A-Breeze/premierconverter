@@ -74,10 +74,8 @@ python setup.py sdist bdist_wheel
 python -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install ./dist/premierconverter-*.whl  # For the wheel (including dependencies)
-# For the source, we first need to install dependencies
-pip install -r requirements.txt
-pip install ./dist/premierconverter-*.tar.gz
+pip install ./dist/premierconverter-*.tar.gz  # For source distribution
+pip install ./dist/premierconverter-*.whl  # For the wheel
 ```
 
 ### Compile development notebooks
@@ -145,5 +143,6 @@ Backlog of all possible ideas, big or small, high priority or low.
 - Investigate using `tox` to run tests on with various dependency versions.
 - Complete setting up CI/CD pipeline on Azure DevOps by:
     - *Azure Artifacts* for a (private) Python package registry
+    - Or trying setting up a local package registry that acts like PyPI, e.g. see: <https://github.com/wolever/pip2pi>
 
 <p align="right"><a href="#top">Back to top</a></p>

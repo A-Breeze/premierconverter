@@ -24,7 +24,7 @@ Functionality to convert an Excel spreadsheet in a given format into a more usef
 ## Important notes
 This is a project for interest only, for training purposes, so it is *highly unlikely* that I will accept contributions on GitHub from the general public. I am going through the steps *as if* this were a real-life project, as realistically as possible.
 
-**Work in progress**: The functionality is not complete, so may not work as intended. Even following these instructions to install and use the app is *at own risk*. See the project's [LICENSE](#LICENSE). Of particular concern is the current lack of automated tests, which increases the introducing bugs when updates are made.
+**Work in progress**: The functionality is not complete, so may not work as intended. Even following these instructions to install and use the app is *at own risk*. See the project's [LICENSE](#LICENSE). Of particular concern is the current lack of automated tests, which increases the risk of introducing bugs when updates are made.
 
 <p align="right"><a href="#top">Back to top</a></p>
 
@@ -35,19 +35,21 @@ These are temporary instructions, as [explained](#Explanation) below.
 You need `conda` and `pip` available and working in a console (e.g. from Anaconda Prompt or Windows Command Prompt `cmd`).
 
 ### Instructions
-1. Download these files from the project repo into a folder anywhere your computer:
+1. Download the following files from the project repo into a folder anywhere your computer:
     - Code module: [`premierconverter.py`](premierconverter.py).
     - Environment specification: [`deploy_env.yml`](deploy_env.yml) and [`requirements.txt`](requirements.txt).
-    - Package specification: ['setup.py`](setup.py)
+    - Package specification: [`setup.py`](setup.py)
+
+    To download a single file from GitHub you need to:
+    1. Go to the file's page in the repo, e.g. [`premierconverter.py`](premierconverter.py).
+    1. Click to view the **Raw** version of the file (button at the top right of the file contents).
+    1. You are directed to a page with the file's content only. Right click and **Save as...** into the location you want. Save the file with the *original* file extension (e.g. `.py` not `.py.txt`).
 1. Open a console and navigate to the folder where you saved the files.
 1. Create the `conda` environment from which the `premierconverter` app will be run:
     ```
-    conda env create -f deploy_env.yml --force 
+    conda env create -f deploy_env.yml --force
     ```
-1. Install the `premierconverter` package:
-    ```
-    pip install .
-    ```
+    This includes installing the `premierconverter` module for use.
 
 ### Explanation
 - **Future aim**: It would be desirable for the app to be available to install using a simple `pip install` command. However, this requires a package distribution to be hosted in a central registry, which has not yet been set up.
@@ -60,6 +62,11 @@ You need `conda` and `pip` available and working in a console (e.g. from Anacond
 When working either in the CLI or Python module, open a console and ensure the `conda` environment `premcon_env` is activated:
 ```
 conda activate premcon_env
+```
+
+When you are finished using the app, you can deactivate the `conda` environment by:
+```
+conda deactivate
 ```
 
 ### Commandline interface (CLI)
