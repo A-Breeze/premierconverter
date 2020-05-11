@@ -14,11 +14,11 @@ import warnings
 # Import external modules
 import numpy as np
 import pandas as pd
-from openpyxl import load_workbook
 import click
 
 # Configuration variables for the expected format and structure of the data
-excel_extensions = ['.xlsx', '.xlsm', '.xltx', '.xltm']  # Note: .xls is *not* readable by openpyxl
+accepted_file_extensions = ['.csv', '', '.txt']
+input_file_encodings = ['utf-8', 'latin-1', 'ISO-8859-1']
 
 raw_struct = {
     'stop_row_at': 'Total Peril Premium',
@@ -33,7 +33,7 @@ raw_struct = {
         'col_names': ['Peril_Factor', 'Relativity', 'Premium_increment', 'Premium_cumulative'],
         'col_types': [np.dtype('object')] + [np.dtype('float')] * 3,
     },
-    'bp_name': 'Base Premium'
+    'bp_name': 'Base Premium',
 }
 
 # Output variables, considered to be constants
@@ -43,8 +43,11 @@ row_id_name = "Ref_num"
 ######################
 # Workflow functions #
 ######################
-def validate_input_options(in_filepath, in_sheet):
-    """Checks on in_filepath and in_sheet"""
+def validate_input_options(in_filepath):
+    """Checks on in_filepath"""
+    # Ensure inputs are correct format
+    in_filepath = Path(in_filepath)
+    
     # Checks the file exists and is an Excel file
     if not in_filepath.is_file():
         raise FileNotFoundError(
@@ -52,50 +55,18 @@ def validate_input_options(in_filepath, in_sheet):
             f"\n\t'{in_filepath.absolute()}'"
             "\n\tCannot read the input data"
         )
-    if not in_filepath.suffix in excel_extensions:
-        raise ValueError(
-            f"\n\tin_filepath: The input file extension '{in_filepath.suffix}'"
-            f"\n\tis not one of the recognised Excel extensions {excel_extensions}"
+    if not in_filepath.suffix.lower() in accepted_file_extensions:
+        warnings.warn(
+            f"in_filepath: The input file extension '{in_filepath.suffix}' "
+            f"is not one of the recognised file extensions {accepted_file_extensions}"
         )
-    
-    # Check the workbook and sheet exists
-    in_workbook = load_workbook(
-        in_filepath,
-        read_only=True, data_only=True, keep_links=False
-    )
-    if isinstance(in_sheet, int):
-        if abs(in_sheet) >= len(in_workbook.worksheets): 
-            raise ValueError(
-                f"\n\tin_sheet: The sheet number '{in_sheet}' cannot be found"
-                f"\n\tin the workbook at location:"
-                f"\n\t'{in_filepath.absolute()}'"
-            )
-        else:
-            in_sheet_obj = in_workbook.worksheets[in_sheet]
-    if isinstance(in_sheet, str):
-        if in_sheet not in in_workbook.sheetnames:
-            raise ValueError(
-                f"\n\tin_sheet: The sheet name '{in_sheet}' cannot be found"
-                f"\n\tin the workbook at location:"
-                f"\n\t'{in_filepath.absolute()}'"
-            )
-        else:
-            in_sheet_obj = in_workbook[in_sheet]
-    if not (isinstance(in_sheet, int) or isinstance(in_sheet, str)):
-        raise ValueError(
-            "\n\tin_sheet: Must be a string or integer "
-            f"\n\tbut '{in_sheet}' of type '{type(in_sheet).__name__}' was supplied"
-        )
-    
     return(None)
 
 
-def validate_output_options(out_filepath, out_sheet_name, force_overwrite):
-    """
-    Checks on out_filepath and out_sheet_name
-    Returns: pd.ExcelWriter to use when saving the output
-    """
-    xl_writer = pd.ExcelWriter(out_filepath, engine = 'openpyxl')
+def validate_output_options(out_filepath, force_overwrite=False):
+    """Checks on out_filepath"""
+    # Ensure inputs are correct format
+    out_filepath = Path(out_filepath)
 
     if not out_filepath.parent.is_dir():
         raise FileNotFoundError(
@@ -104,51 +75,71 @@ def validate_output_options(out_filepath, out_sheet_name, force_overwrite):
             "\n\tCreate the output folder before running this command"
         )
 
-    if out_filepath.is_file():
-        out_workbook = load_workbook(out_filepath)
-        if out_sheet_name in out_workbook.sheetnames and not force_overwrite:
-            raise FileExistsError(
-                "\n\tOutput options: Sheet already exists at the output location:"
-                f"\n\tLocation: '{out_filepath}'"
-                f"\n\tSheet name: '{out_sheet_name}'"
-                "\n\tIf you want to overwrite it, re-run with `force_overwrite = True`"
-            )
-        # Set the pandas ExcelWriter to point at this workbook
-        xl_writer.book = out_workbook
-        
-        ## ExcelWriter for some reason uses writer.sheets to access the sheet.
-        ## If you leave it empty it will not know what sheets are already there
-        ## and will create a new sheet. See: <https://stackoverflow.com/a/20221655>
-        xl_writer.sheets = dict((ws.title, ws) for ws in out_workbook.worksheets)
+    if out_filepath.is_file() and not force_overwrite:
+        raise FileExistsError(
+            "\n\tOutput options: File already exists at the output location:"
+            f"\n\t'{out_filepath.absolute()}'"
+            "\n\tIf you want to overwrite it, re-run with `force_overwrite = True`"
+        )
     else:
-        if not out_filepath.suffix in excel_extensions:
+        if not out_filepath.suffix in accepted_file_extensions:
             warnings.warn(
                 f"out_filepath: The output file extension '{out_filepath.suffix}' "
-                "is not a recognised Excel extension",
+                f"is not one of the recognised file extensions {accepted_file_extensions}",
             )
-    return(xl_writer)
+    return(None)
 
 
-def read_raw_data(in_filepath, in_sheet=0, nrows=None):
+def read_raw_data(in_filepath, nrows=None, file_delimiter=','):
     """
-    Load data from spreadsheet
+    Load data from file
     
-    in_filepath: Location of the Excel file to read
-    in_sheet: Sheet number (starting from 0), or sheet name to read
+    in_filepath: Location of the file to read
     nrows: Maximum number of rows to read
-    """   
-    df_raw = pd.read_excel(
-        in_filepath, sheet_name=in_sheet,
-        engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
-        header=None, index_col=0, nrows=nrows,
-    ).rename_axis(index=row_id_name)
-    
+    file_delimiter: Character that separates input values in lines
+    Returns: The loaded DataFrame, if it is successful
+    """
+    df_raw = None
+    for encoding in input_file_encodings:
+        try:
+            df_raw = pd.read_csv(
+                in_filepath,
+                header=None, index_col=0, nrows=nrows,
+                sep=file_delimiter, encoding=encoding
+            ).rename_axis(index=row_id_name)
+            # print(f"'{encoding}': Success")  # Used for debugging only
+            break
+        except UnicodeDecodeError:
+            # print(f"'{encoding}': Fail")  # Used for debugging only
+            pass
+    if df_raw is None:
+        raise IOError(
+            "\n\tread_raw_data: pandas.read_csv() failed."
+            f"\n\tFile cannot be read with any of the encodings: {input_file_encodings}"
+        )
     return(df_raw)
 
 
-def validate_raw_data(df_raw):
+def validate_raw_data(df_raw, file_delimiter=','):
     """Checks on the loaded raw data"""
-    pass  # None currently. Checks are either before loading or after splitting
+    if df_raw.shape[1] == 0:
+        warnings.warn(
+            "Raw data: No columns of data have been read. "
+            "Are you sure you have specified the correct file? "
+            f"Are values seperated by the character '{file_delimiter}'?"
+        )
+    if df_raw.shape[0] <= 1:
+        warnings.warn(
+            "Raw data: Only one row of data has been read. "
+            "Are you sure you have specified the correct file? "
+            "Are rows of data split into lines of the file?"
+        )
+    if not df_raw.index.is_unique:
+        warnings.warn(
+            f"Raw data: Row identifiers '{row_id_name}' are not unique. "
+            "This may lead to unexpected results."
+        )
+    return(None)
 
 
 # Helper functions to remove unwanted values
@@ -204,12 +195,15 @@ def trim_na_cols(df):
 
 def remove_unwanted_values(df_raw):
     """
-    Set unwanted values to NaN and remove surplus columns
-    (with all missing values) from the right
+    Set unwanted values to NaN, remove surplus columns
+    (with all missing values) from the right, and re-cast
+    columns to numeric if possible.
+    
+    Returns: Adjusted DataFrame
     """   
     df_trimmed = df_raw.apply(
         set_na_after_val, match_val=raw_struct['stop_row_at'], axis=1
-    ).pipe(trim_na_cols)
+    ).pipe(trim_na_cols).apply(pd.to_numeric, errors='ignore')
     return(df_trimmed)
 
 
@@ -244,11 +238,7 @@ def get_stem_columns(df_trimmed):
             raw_struct['stem']['col_names']
         )))
     )
-    
-    validate_stem_columns(df_stem)
-    
     return(df_stem)
-
 
 
 def validate_stem_columns(df_stem):
@@ -279,8 +269,7 @@ def get_factor_sets(df_trimmed):
         for fset_start_col in range(
             raw_struct['stem']['ncols'], df_trimmed.shape[1], raw_struct['f_set']['ncols']
         )
-    ], sort=False)
-    
+    ], sort=False).reset_index(drop=True)  # Best practice to ensure a unique index
     return(df_fsets)
 
 
@@ -319,13 +308,11 @@ def validate_peril_factors(df_fsets, perils_implied):
             "Implied perils: Not every Peril_Factor starts with a Peril. "
             "Suggests the raw data format is not as expected."
         )
-    
     if '' in perils_implied:
         warnings.warn(
             "Implied perils: Empty string has been implied. "
             "Suggests the raw data format is not as expected."
         )
-    
     return(None)
 
 
@@ -340,7 +327,6 @@ def split_peril_factor(df_fsets, perils_implied):
             , axis=1
         )
     ).drop(columns='Peril_Factor')
-    
     return(df_fsets_split)
 
 
@@ -363,7 +349,6 @@ def get_base_prems(df_fsets_split, pf_sep="_"):
         columns=['Peril', 'Custom_order', 'Peril_Factor'],
         values='Premium_cumulative'
     )
-    
     return(df_base_prems)
 
 
@@ -421,7 +406,6 @@ def get_all_factor_relativities(
         columns=['Peril', 'Custom_order', 'Peril_Factor'],
         values='Relativity'
     )
-    
     return(df_factors)
 
 
@@ -446,7 +430,6 @@ def get_base_and_factors(df_base_prems, df_factors):
 
     # Drop unwanted levels of the column MultiIndex
     df_base_factors.columns = df_base_factors.columns.get_level_values('Peril_Factor')
-
     return(df_base_factors)
 
 
@@ -456,14 +439,15 @@ def join_stem_to_base_factors(df_stem, df_base_factors):
         df_base_factors,
         how='left', left_index=True, right_index=True
     ).fillna(0.)  # The only mising values are from 'error' rows
-    
     return(df_formatted)
 
 
-def save_to_workbook(df_formatted, xl_writer, out_sheet_name):
-    df_formatted.to_excel(xl_writer, sheet_name=out_sheet_name)
-    xl_writer.save()
-    xl_writer.close()
+def save_to_csv(df_formatted, out_filepath, file_delimiter=","):
+    """Save DataFrame to specified output location"""
+    df_formatted.to_csv(
+        out_filepath,
+        sep=file_delimiter, index=True
+    )
     return(True)
 
 
@@ -526,72 +510,82 @@ def convert_df(
 def convert(
     in_filepath,
     out_filepath,
-    in_sheet=0,
-    out_sheet_name='Sheet1',
     force_overwrite=False,
     nrows=None,
+    file_delimiter=',',
     **kwargs,
 ):
     """
-    Load raw data from Excel, convert to specified format, and save result
+    Load raw data, convert to specified format, and save result
     
-    in_filepath: Path to Excel file containing a sheet with the raw data
-    out_filepath: Path of an Excel file to save the formatted data
+    in_filepath: Path to file containing a sheet with the raw data
+    out_filepath: Path of a file to save the formatted data
         If it does not exist, a new workbook will be created.
         The directory must already exist.
     
-    in_sheet: Sheet number (starting from 0) or sheet name to read
-    out_sheet_name: Name of the sheet to save the formatted data
-    force_overwrite: Set to True if you want to overwrite the existing workbook sheet
+    file_delimiter: Seperator for values in the input and output files
+    force_overwrite: Set to True if you want to overwrite an existing file
 
     nrows: Maximum number of rows to read
     **kwargs: Other arguments to pass to convert_df
     
-    Returns: (out_filepath, out_sheet_name) if it completes
+    Returns: out_filepath, if it completes successfully
     """
     # Set defaults
     in_filepath = Path(in_filepath)
     out_filepath = Path(out_filepath)
     
     # Validate function inputs
-    validate_input_options(in_filepath, in_sheet)
-    xl_writer = validate_output_options(out_filepath, out_sheet_name, force_overwrite)
+    validate_input_options(in_filepath)
+    validate_output_options(out_filepath, force_overwrite)
     
     # Load raw data
-    df_raw = read_raw_data(in_filepath, in_sheet, nrows)
+    df_raw = read_raw_data(in_filepath, nrows, file_delimiter)
     
     # Get converted DataFrame
     df_formatted = convert_df(df_raw, **kwargs)
     
     # Save results to a workbook
-    if save_to_workbook(df_formatted, xl_writer, out_sheet_name):
+    if save_to_csv(df_formatted, out_filepath, file_delimiter):
         print(
-            "Output saved"
-            f"\nFile:\t{out_filepath.absolute()}"
-            f"\nSheet:\t{out_sheet_name}"
+            f"Output saved here:\t{out_filepath.absolute()}"
         )
     
-    return((out_filepath, out_sheet_name))
+    return(out_filepath)
 
 
 #######################
 # Reloading functions #
 #######################
-def load_formatted_spreadsheet(out_filepath, out_sheet_name):
+def load_formatted_file(out_filepath, file_delimiter=','):
     """
-    Utility function to load data from output spreadsheet
+    Utility function to load data from output file
     
     *Not* designed to check if there have been any changes since 
     the output sheet was created.
     """
-    df_reload = pd.read_excel(
-        out_filepath, sheet_name=out_sheet_name,
-        engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
-        index_col=[0],
-    ).copy().apply(lambda col: (
-        col if col.name in raw_struct['stem']['col_names'][0]
-        else col.astype('float')
-    ))
+    df_reload = None
+    for encoding in input_file_encodings:
+        try:
+            df_reload = pd.read_csv(
+                out_filepath,
+                index_col=0, sep=file_delimiter,
+                encoding=encoding
+            ).apply(lambda col: (
+                col.astype('float') 
+                if np.issubdtype(col.dtype, np.number)
+                else col
+            ))
+            # print(f"'{encoding}': Success")  # Used for debugging only
+            break
+        except UnicodeDecodeError:
+            # print(f"'{encoding}': Fail")  # Used for debugging only
+            pass
+    if df_reload is None:
+        raise IOError(
+            "\n\tload_formatted_file: pandas.read_csv() failed."
+            f"\n\tFile cannot be read with any of the encodings: {input_file_encodings}"
+        )
     return(df_reload)
 
 
@@ -626,16 +620,6 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
     metavar = '<output filepath>',
 )
 @click.option(
-    '--in_sheet', '-i', 'in_sheet',
-    default="0", show_default=True,
-    help='Sheet number (starting from 0) or sheet name to read.',
-)
-@click.option(
-    '--out_sheet', '-o', 'out_sheet_name',
-    default="Sheet1", show_default=True,
-    help='Name of the sheet to save the formatted data.',
-)
-@click.option(
     '--force', 'force_overwrite',
     is_flag=True,
     help='Overwrite an existing output worksheet.',
@@ -646,6 +630,11 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
     help='Maximum number of rows to read.',
 )
 @click.option(
+    '--sep', '-s', 'file_delimiter',
+    type=str, default=",", show_default=True,
+    help='Separator for in and out files.',
+)
+@click.option(
     '--no_checks', '-n', 'no_checks',
     is_flag=True,
     help='Stop optional validation checks from running.',
@@ -654,18 +643,17 @@ def cli(
     in_filepath,
     out_filepath,
     # Default values for these arguments are given above
-    in_sheet,
-    out_sheet_name,
     force_overwrite,
     nrows,
+    file_delimiter,
     no_checks,
 ):
     """
-    Load raw data from Excel, convert to specified format, and save result
+    Load raw data, convert to specified format, and save result
     
-    <input filepath>: Path to Excel file containing a sheet with the raw data
+    <input filepath>: Path to file containing the raw data
     
-    <output filepath>: Path where the resulting Excel file should go.
+    <output filepath>: Path where the resulting file should go.
     If it does not exist, a new workbook will be created.
     The directory must already exist.
     """
@@ -681,10 +669,9 @@ def cli(
     convert(
         in_filepath = in_filepath,
         out_filepath = out_filepath,
-        in_sheet = in_sheet,
-        out_sheet_name = out_sheet_name,
         force_overwrite = force_overwrite,
         nrows = nrows,
+        file_delimiter = file_delimiter,
         with_validation = not no_checks,
     )
     return(None)
