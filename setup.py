@@ -24,6 +24,7 @@ REQUIRES_PYTHON = '>=3.6.0'
 
 # What packages are required for this module to be executed?
 def list_reqs(fname='requirements.txt'):
+    """Get string data from a file"""
     with open(fname) as fd:
         return fd.read().splitlines()
 
