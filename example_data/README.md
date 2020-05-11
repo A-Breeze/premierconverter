@@ -29,6 +29,7 @@ Specific functionality included:
 - Consistent values for the value fields.
 - Relativity that is so close to 1 that the incremental premium is zero.
 - Example of an error row (1)
+- Unwanted data in columns of each row, starting with a cell with value `Total Peril Premium`. Occurs on every row except the error row.
 
 <p align="right"><a href="#top">Back to top</a></p>
 
