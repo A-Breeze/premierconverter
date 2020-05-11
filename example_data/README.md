@@ -17,8 +17,8 @@ The data files used in this repo has been randomised and all information has bee
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Example files
-### `minimal_dummy_data_01.xlsx`
-Example of a small input data set which should not throw any errors, along with the expected output.
+### `minimal01_dummy_data.xlsx`
+Example of a small input data set (sheet `Sheet1`) which should not throw any errors, along with the expected output (sheet `expected_result`).
 
 Specific functionality included:
 - Multiple perils (2)

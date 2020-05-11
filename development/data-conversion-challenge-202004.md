@@ -23,15 +23,12 @@ This notebook is available in the following locations. These versions are kept i
 - In the GitHub project repo: <https://github.com/A-Breeze/premierconverter>. See the `README.md` for further instructions.
 <!-- #endregion -->
 
-# STOP PRESS
-There is a [known issue](#Known-issue) preventing this notebook from running on Windows. Decided not to fix it for the time being, because it will no longer be an issue when we move to using CSVs instead of Excel files.
-
 <!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->
 <!-- This table of contents is updated *manually* -->
 # Contents
 1. [Setup](#Setup): Import packages, Config variables
 1. [Variables](#Variables): Raw data structure, Inputs
-1. [Workflow](#Workflow): Load raw data, Remove unwanted extra values, Stem section, Factor sets
+1. [Workflow](#Workflow): Load raw data, Remove unwanted extra values, Stem section, Factor sets, Output to CSV, Load expected output to check it is as expected
 1. [Using the functions](#Using-the-functions)
 1. [Unused rough work](#Unused-rough-work): Replace multiple string terms, Chained drop a column MultiIndex level
 <!-- #endregion -->
@@ -49,7 +46,7 @@ warnings.filterwarnings('always')
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 # Other warnings that sometimes occur
-warnings.filterwarnings("ignore", message="unclosed file <_io.BufferedReader")
+warnings.filterwarnings("ignore", message="unclosed file <_io.Buffered")
 ```
 
 ```python
@@ -72,8 +69,6 @@ import os
 from IPython import __version__ as IPy_version
 import numpy as np
 import pandas as pd
-from openpyxl import __version__ as opyxl_version
-from openpyxl import load_workbook
 from click import __version__ as click_version
 
 # Import project modules
@@ -94,8 +89,6 @@ assert np.__version__ == '1.18.2'
 print(f'numpy version:\t\t\t{np.__version__}')
 assert pd.__version__ == '0.25.3'
 print(f'pandas version:\t\t\t{pd.__version__}')
-assert opyxl_version == '3.0.3'
-print(f'openpyxl version:\t\t{opyxl_version}')
 assert click_version == '7.1.1'
 print(f'click version:\t\t\t{click_version}')
 print(f'premierconverter version:\t{PCon.__version__}')
@@ -129,7 +122,9 @@ print("Correct: All locations are available as expected")
 
 ```python
 # Configuration variables for the expected format and structure of the data
-excel_extensions = ['.xlsx', '.xlsm', '.xltx', '.xltm']  # Note: .xls is *not* readable by openpyxl
+accepted_file_extensions = ['.csv', '', '.txt']
+input_file_encodings = ['utf-8', 'latin-1', 'ISO-8859-1']
+file_delimiter = ','
 
 raw_struct = {
     'stop_row_at': 'Total Peril Premium',
@@ -169,8 +164,7 @@ pf_sep = '_'
 
 ```python
 # Input file location
-in_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
-in_sheet = 0
+in_filepath = raw_data_folder_path / 'minimal01_input.csv'
 
 # Checks the file exists and is an Excel file
 in_filepath = Path(in_filepath)
@@ -180,75 +174,21 @@ if not in_filepath.is_file():
         f"\n\t'{in_filepath.absolute()}'"
         "\n\tCannot read the input data"
     )
-if not in_filepath.suffix in excel_extensions:
-    raise ValueError(
-        f"\n\tin_filepath: The input file extension '{in_filepath.suffix}'"
-        f"\n\tis not one of the recognised Excel extensions {excel_extensions}"
-    )
-print("Correct: Input file exists and has an Excel extension")
-```
-
-```python
-# Check the workbook and sheet exists
-in_workbook = load_workbook(
-    in_filepath,
-    read_only=True, data_only=True, keep_links=False
-)
-if isinstance(in_sheet, int):
-    if abs(in_sheet) >= len(in_workbook.worksheets): 
-        raise ValueError(
-            f"\n\tin_sheet: The sheet number '{in_sheet}' cannot be found"
-            f"\n\tin the workbook at location:"
-            f"\n\t'{in_filepath.absolute()}'"
-        )
-    else:
-        in_sheet_obj = in_workbook.worksheets[in_sheet]
-if isinstance(in_sheet, str):
-    if in_sheet not in in_workbook.worksheets:
-        raise ValueError(
-            f"\n\tin_sheet: The sheet name '{in_sheet}' cannot be found"
-            f"\n\tin the workbook at location:"
-            f"\n\t'{in_filepath.absolute()}'"
-        )
-    else:
-        in_sheet_obj = in_workbook[in_sheet]
-if not (isinstance(in_sheet, int) or isinstance(in_sheet, str)):
-    raise ValueError(
-        "\n\tin_sheet: Must be a string or integer "
-        f"\n\tbut '{in_sheet}' of type '{type(in_sheet).__name__}' was supplied"
-    )
-print("Correct: Input sheet exists")
-```
-
-```python
-# Warn if it is not the expected shape
-in_sheet_ncols = in_sheet_obj.max_column
-if not (
-    # At least the stem columns and one factor set column
-    (in_sheet_ncols - 1) >= 
-    raw_struct['stem']['ncols'] + raw_struct['f_set']['ncols']
-) or not (
-    # Stem columns plus a multiple of factor set columns
-    (in_sheet_ncols - 1 - raw_struct['stem']['ncols']) 
-    % raw_struct['f_set']['ncols'] == 0
-):
+if not in_filepath.suffix.lower() in accepted_file_extensions:
     warnings.warn(
-        f"Raw data: Incorrect number of columns in worksheet: {in_sheet_ncols}"
-        "\n\tThere should be: 1 for row ID, "
-        f"{raw_struct['stem']['ncols']} for stem section, "
-        f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
+        f"in_filepath: The input file extension '{in_filepath.suffix}' "
+        f"is not one of the recognised file extensions {accepted_file_extensions}"
     )
+print("Correct: Input file exists and has a recognised extension")
 ```
 
 ```python
 # Output file location
-out_filepath = 'formatted_dummy_data1.xlsx'
-out_sheet_name = 'Sheet2'
+out_filepath = 'formatted_dummy_data1.csv'
 force_overwrite = False
 
 # Checks
 out_filepath = Path(out_filepath)
-xl_writer = pd.ExcelWriter(out_filepath, engine = 'openpyxl')
 
 if not out_filepath.parent.is_dir():
     raise FileNotFoundError(
@@ -257,26 +197,17 @@ if not out_filepath.parent.is_dir():
         "\n\tCreate the output folder before running this command"
     )
 
-if out_filepath.is_file():
-    out_workbook = load_workbook(out_filepath)
-    if out_sheet_name in out_workbook.sheetnames and not force_overwrite:
-        raise FileExistsError(
-            "\n\tOutput options: Sheet already exists at the output location:"
-            f"\n\tLocation: '{out_filepath}'"
-            f"\n\tSheet name: '{out_sheet_name}'"
-            "\n\tIf you want to overwrite it, re-run with `force_overwrite = True`"
-        )
-    # Set the pandas ExcelWriter to point at this workbook
-    xl_writer.book = out_workbook
-    ## ExcelWriter for some reason uses writer.sheets to access the sheet.
-    ## If you leave it empty it will not know what sheets are already there
-    ## and will create a new sheet. See: <https://stackoverflow.com/a/20221655>
-    xl_writer.sheets = dict((ws.title, ws) for ws in out_workbook.worksheets)
+if out_filepath.is_file() and not force_overwrite:
+    raise FileExistsError(
+        "\n\tOutput options: File already exists at the output location:"
+        f"\n\t'{out_filepath.absolute()}'"
+        "\n\tIf you want to overwrite it, re-run with `force_overwrite = True`"
+    )
 else:
-    if not out_filepath.suffix in excel_extensions:
+    if not out_filepath.suffix in accepted_file_extensions:
         warnings.warn(
             f"out_filepath: The output file extension '{out_filepath.suffix}' "
-            "is not a recognised Excel extension",
+            f"is not one of the recognised file extensions {accepted_file_extensions}",
         )
 
 print("Correct: A suitable location for output has been chosen")
@@ -290,13 +221,47 @@ print("Correct: A suitable location for output has been chosen")
 ## Load raw data
 
 ```python
-df_raw = pd.read_excel(
-    in_filepath, sheet_name=in_sheet,
-    engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
-    header=None, index_col=0, nrows=nrows,
-).rename_axis(index=row_id_name)
+df_raw = None
+for encoding in input_file_encodings:
+    try:
+        df_raw = pd.read_csv(
+            in_filepath,
+            header=None, index_col=0, nrows=nrows,
+            sep=file_delimiter, encoding=encoding
+        ).rename_axis(index=row_id_name)
+        # print(f"'{encoding}': Success")  # Used for debugging only
+        break
+    except UnicodeDecodeError:
+        # print(f"'{encoding}': Fail")  # Used for debugging only
+        pass
+if df_raw is None:
+    raise IOError(
+        "\n\tread_raw_data: pandas.read_csv() failed."
+        f"\n\tFile cannot be read with any of the encodings: {input_file_encodings}"
+    )
 
 df_raw.head()
+```
+
+```python
+# Check it is not malformed
+if df_raw.shape[1] == 0:
+    warnings.warn(
+        "Raw data: No columns of data have been read. "
+        "Are you sure you have specified the correct file? "
+        f"Are values seperated by the character '{file_delimiter}'?"
+    )
+if df_raw.shape[0] <= 1:
+    warnings.warn(
+        "Raw data: Only one row of data has been read. "
+        "Are you sure you have specified the correct file? "
+        "Are rows of data split into lines of the file?"
+    )
+if not df_raw.index.is_unique:
+    warnings.warn(
+        f"Raw data: Row identifiers '{row_id_name}' are not unique. "
+        "This may lead to unexpected results."
+    )
 ```
 
 ## Remove unwanted extra values
@@ -355,10 +320,11 @@ def trim_na_cols(df):
 
 ```python
 # Set unwanted values to NaN
-# and remove surplus columns (with all missing values) from the right
+# and remove surplus columns (with all missing values) from the right.
+# Re-cast columns to numeric if possible.
 df_trimmed = df_raw.apply(
     set_na_after_val, match_val=raw_struct['stop_row_at'], axis=1
-).pipe(trim_na_cols)
+).pipe(trim_na_cols).apply(pd.to_numeric, errors='ignore')
 
 df_trimmed.head()
 ```
@@ -427,7 +393,7 @@ df_fsets = pd.concat([
     for fset_start_col in range(
         raw_struct['stem']['ncols'], df_trimmed.shape[1], raw_struct['f_set']['ncols']
     )
-], sort=False)
+], sort=False).reset_index(drop=True)  # Best practice to ensure a unique index
 
 df_fsets.head()
 ```
@@ -440,7 +406,7 @@ if not (
 ).all():
     warnings.warn(
         "Factor sets columns: Unexpected column data types"
-        f"\n\tExepcted: {raw_struct['f_set']['col_types']}"
+        f"\n\tExpected: {raw_struct['f_set']['col_types']}"
         f"\n\tActual:   {df_fsets[raw_struct['f_set']['col_names']].dtypes.tolist()}"
     )
 ```
@@ -586,13 +552,14 @@ df_formatted = df_stem.merge(
 df_formatted.iloc[:10,:20]
 ```
 
-## Output to Excel
+## Output to CSV
 
 ```python
 # Save it
-df_formatted.to_excel(xl_writer, sheet_name=out_sheet_name)
-xl_writer.save()
-xl_writer.close()
+df_formatted.to_csv(
+    out_filepath,
+    sep=file_delimiter, index=True
+)
 print("Output saved")
 ```
 
@@ -600,14 +567,10 @@ print("Output saved")
 
 ```python
 # Check it worked
-df_reload = pd.read_excel(
-    out_filepath, sheet_name=out_sheet_name,
-    engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
-    index_col=[0],
-).apply(lambda col: (
-    col if col.name in raw_struct['stem']['col_names'][0]
-    else col.astype('float')
-))
+df_reload = pd.read_csv(
+    out_filepath,
+    index_col=0, sep=file_delimiter
+)
 
 df_reload.head()
 ```
@@ -626,20 +589,32 @@ print("Correct: The reloaded values are equal, up to floating point tolerance")
 
 ```python
 # Location of sheet of expected results
-expected_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
-expected_sheet = 'expected_result'
+expected_filepath = raw_data_folder_path / 'minimal01_expected_output.csv'
 ```
 
 ```python
-# Check it worked
-df_expected = pd.read_excel(
-    expected_filepath, sheet_name=expected_sheet,
-    engine="openpyxl",
-    index_col=[0],
-).apply(lambda col: (
-    col if col.name in raw_struct['stem']['col_names'][0]
-    else col.astype('float')
-))
+df_expected = None
+for encoding in input_file_encodings:
+    try:
+        df_expected = pd.read_csv(
+            expected_filepath,
+            index_col=0, sep=file_delimiter,
+            encoding=encoding
+        ).apply(lambda col: (
+            col.astype('float') 
+            if np.issubdtype(col.dtype, np.number)
+            else col
+        ))
+        # print(f"'{encoding}': Success")  # Used for debugging only
+        break
+    except UnicodeDecodeError:
+        # print(f"'{encoding}': Fail")  # Used for debugging only
+        pass
+if df_expected is None:
+    raise IOError(
+        "\n\tload_formatted_file: pandas.read_csv() failed."
+        f"\n\tFile cannot be read with any of the encodings: {input_file_encodings}"
+    )
 
 df_expected.head()
 ```
@@ -664,9 +639,9 @@ help(PCon.convert)
 
 ```python
 # Run with default arguments
-in_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
-out_filepath = 'formatted_data.xlsx'
-res_filepath, res_sheet_name = PCon.convert(in_filepath, out_filepath)
+in_filepath = raw_data_folder_path / 'minimal01_input.csv'
+out_filepath = 'formatted_data.csv'
+res_filepath = PCon.convert(in_filepath, out_filepath)
 ```
 
 ```python
@@ -679,14 +654,9 @@ df_formatted = PCon.convert_df(df_raw)
 df_formatted.head()
 ```
 
-### Known issue
-On Windows, the following `pd.read_excel`  using `openpyxl` is opening the file, but not closing the stream. This means the file is then locked for changes (e.g. deletion, later on in the script). As per: <https://github.com/pandas-dev/pandas/issues/29803> (not fixed at the time of writing). 
-
-Seeing as the next development step is to change from using Excel files to CSVs, I have not fixed this issue.
-
 ```python
 # Reload resulting data from workbook
-df_reload = PCon.load_formatted_spreadsheet(res_filepath, res_sheet_name)
+df_reload = PCon.load_formatted_file(res_filepath)
 
 # Check it matches expectations
 if PCon.formatted_dfs_are_equal(df_formatted, df_reload):
@@ -695,65 +665,18 @@ if PCon.formatted_dfs_are_equal(df_formatted, df_reload):
 
 ```python
 # Check against expected output from manually created worksheet
-expected_filepath = raw_data_folder_path / 'minimal_dummy_data_01.xlsx'
-expected_sheet = 'expected_result'
-df_expected = PCon.load_formatted_spreadsheet(expected_filepath, expected_sheet)
+expected_filepath = raw_data_folder_path / 'minimal01_expected_output.csv'
+df_expected = PCon.load_formatted_file(expected_filepath)
 
 # Check it matches expectations
 if PCon.formatted_dfs_are_equal(df_formatted, df_expected):
     print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
 
-The following will fail due to a [known issue](#Known-issue).
-
 ```python
-# Delete the results workbook
-try: 
-    res_filepath.unlink()
-    print("Workspace restored")
-except PermissionError:
-    print("File deletion has FAILED due to a known error")
-```
-
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
-
-# Unused rough work
-
-
-## Replace multiple string terms
-
-```python
-import functools
-
-def multi_replace(base_str, replacement_dict):
-    """
-    Run str.replace() multiple times to replace multiple terms.
-    
-    base_str: Starting string from which you want to replace substrings
-    replacement_dict: Each item of the dictionary is {string_to_replace: replacement_string}
-    """
-    return(functools.reduce(
-        lambda current_str, replace_pair: current_str.replace(*replace_pair),
-        {key: str(val) for key, val in replacement_dict.items()}.items(),
-        base_str
-    ))
-```
-
-## Chained drop a column MultiIndex level
-
-```python
-# df_base_factors = df_base_prems.merge(
-#     df_factors,
-#     how='inner', left_index=True, right_index=True
-# ).pipe(
-#     lambda df: df[df.columns.sort_values()]
-# ).rename(
-#     columns=lambda x: '', level = 'Peril'
-# ).rename(
-#     columns=lambda x: '', level = 'Custom_order'
-# ).stack([0,1])#.reset_index(level=[1,2], drop=True)
-
-# df_base_factors.head()
+# Delete the results file
+res_filepath.unlink()
+print("Workspace restored")
 ```
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>

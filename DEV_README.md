@@ -102,6 +102,12 @@ The development notebooks have been saved in `jupytext` markdown format, so they
 jupytext --to notebook --output development/compiled/data-conversion-challenge-202004.ipynb --execute development/data-conversion-challenge-202004.md
 ```
 
+### Run linting
+To check code formatting using `pylint`.
+```
+pylint premierconverter.py
+```
+
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Further notes
