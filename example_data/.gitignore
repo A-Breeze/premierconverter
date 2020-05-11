@@ -1,3 +1,4 @@
 # AB 2020-04-30:  Currently waiting for approval that the following data can be committed to a public repo
-minimal_dummy_data_01.xlsx
-minimal_dummy_data_01.csv
+minimal01_dummy_data.xlsx
+minimal01_expected_output.csv
+minimal01_input.csv
