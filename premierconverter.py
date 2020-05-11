@@ -657,14 +657,6 @@ def cli(
     If it does not exist, a new workbook will be created.
     The directory must already exist.
     """
-    # Format inputs
-    # in_sheet passed from click is a string
-    # Convert it to an int if possible
-    try: 
-        in_sheet = int(in_sheet)
-    except ValueError:
-        pass
-    
     # Pass parameters to convert()
     convert(
         in_filepath = in_filepath,
