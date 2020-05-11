@@ -21,6 +21,7 @@ import click
 excel_extensions = ['.xlsx', '.xlsm', '.xltx', '.xltm']  # Note: .xls is *not* readable by openpyxl
 
 raw_struct = {
+    'stop_row_at': 'Total Peril Premium',
     'stem': {
         'ncols': 5,
         'chosen_cols': [0,1],
@@ -84,24 +85,6 @@ def validate_input_options(in_filepath, in_sheet):
         raise ValueError(
             "\n\tin_sheet: Must be a string or integer "
             f"\n\tbut '{in_sheet}' of type '{type(in_sheet).__name__}' was supplied"
-        )
-    
-    # Warn if it is not the expected shape
-    in_sheet_ncols = in_sheet_obj.max_column
-    if not (
-        # At least the stem columns and one factor set column
-        (in_sheet_ncols - 1) >= 
-        raw_struct['stem']['ncols'] + raw_struct['f_set']['ncols']
-    ) or not (
-        # Stem columns plus a multiple of factor set columns
-        (in_sheet_ncols - 1 - raw_struct['stem']['ncols']) 
-        % raw_struct['f_set']['ncols'] == 0
-    ):
-        warnings.warn(
-            f"Raw data: Incorrect number of columns in worksheet: {in_sheet_ncols}"
-            "\n\tThere should be: 1 for row ID, "
-            f"{raw_struct['stem']['ncols']} for stem section, "
-            f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
         )
     
     return(None)
@@ -168,9 +151,92 @@ def validate_raw_data(df_raw):
     pass  # None currently. Checks are either before loading or after splitting
 
 
-def get_stem_columns(df_raw):
+# Helper functions to remove unwanted values
+def set_na_after_val(row_sers, match_val):
+    """
+    Return a copy of `row_sers` with values on or after the 
+    first instance of `match_val` set to NaN (i.e. missing).
+    
+    row_sers: Series to look through
+    match_val: Scalar to find. If no occurrences are found, 
+        return a copy of the original Serires.
+    """
+    res = row_sers.to_frame('val').assign(
+        keep=lambda df: pd.Series(np.select(
+            # All matching values are set to 1.0
+            # Others are set to NaN
+            [df['val'] == match_val],
+            [1.0],
+            default=np.nan,
+        ), index=df.index).ffill(
+            # Forward fill so that all entries on or after the first
+            # match are set to 1.0, not NaN
+        ).isna(),  # Convert NaN/1.0 to True/False
+        # Take the original value, except where 'keep' is False,
+        # where the value is replaced with NaN.
+        new_val=lambda df: df['val'].where(df['keep'], np.nan)
+    )['new_val']
+    return(res)
+
+
+def trim_na_cols(df):
+    """
+    Remove any columns on the right of a DataFrame `df` which have all missing 
+    values up to the first column with at least one non-missing value.
+    """
+    keep_col = df.isna().mean(
+        # Get proportion of each column that is missing.
+        # Columns with all missing values will have 1.0 proportion missing.
+    ).to_frame('prop_missing').assign(
+        keep=lambda df: pd.Series(np.select(
+            # All columns with at least one non-missing value are set to 1.0
+            # Others are set to NaN
+            [df['prop_missing'] < 1.],
+            [1.0],
+            default=np.nan,
+        ), index=df.index).bfill(
+            # Backward fill so that all columns on or before the last
+            # column with at least one non-missing value are set to 1.0
+        ).notna()  # Convert 1.0/NaN to True/False
+    )['keep']
+    return(df.loc[:, keep_col])
+
+
+def remove_unwanted_values(df_raw):
+    """
+    Set unwanted values to NaN and remove surplus columns
+    (with all missing values) from the right
+    """   
+    df_trimmed = df_raw.apply(
+        set_na_after_val, match_val=raw_struct['stop_row_at'], axis=1
+    ).pipe(trim_na_cols)
+    return(df_trimmed)
+
+
+def validate_trimmed_data(df_trimmed):
+    """Checks on the trimmed data"""
+    # Check it is as expected
+    if not (
+        # At least the stem columns and one factor set column
+        df_trimmed.shape[1] >= 
+        raw_struct['stem']['ncols'] + 1 * raw_struct['f_set']['ncols']
+    ) or not (
+        # Stem columns plus a multiple of factor set columns
+        (df_trimmed.shape[1] - raw_struct['stem']['ncols']) 
+        % raw_struct['f_set']['ncols'] == 0
+    ):
+        warnings.warn(
+            f"Trimmed data: Incorrect number of columns with relevant data: {df_trimmed.shape[1] + 1}"
+            "\n\tThere should be: 1 for index, "
+            f"{raw_struct['stem']['ncols']} for stem section, "
+            f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
+        )
+    return(None)
+
+
+def get_stem_columns(df_trimmed):
     """Select and format the stem columns from the raw data"""
-    df_stem = df_raw.iloc[
+    df_stem = df_trimmed.iloc[
         :, raw_struct['stem']['chosen_cols']
     ].pipe(  # Rename the columns
         lambda df: df.rename(columns=dict(zip(
@@ -182,6 +248,7 @@ def get_stem_columns(df_raw):
     validate_stem_columns(df_stem)
     
     return(df_stem)
+
 
 
 def validate_stem_columns(df_stem):
@@ -197,11 +264,11 @@ def validate_stem_columns(df_stem):
     return(None)
 
 
-def get_factor_sets(df_raw):
+def get_factor_sets(df_trimmed):
     """Concatenate the columns in the raw data that consist of the factor sets"""
     df_fsets = pd.concat([
         # For each of the factor sets of columns
-        df_raw.iloc[  # Select the columns
+        df_trimmed.iloc[  # Select the columns
             :, fset_start_col:(fset_start_col + raw_struct['f_set']['ncols'])
         ].dropna(  # Remove rows that have all missing values
             how="all"
@@ -210,7 +277,7 @@ def get_factor_sets(df_raw):
         )))).reset_index()  # Get row_ID as a column
 
         for fset_start_col in range(
-            raw_struct['stem']['ncols'], df_raw.shape[1], raw_struct['f_set']['ncols']
+            raw_struct['stem']['ncols'], df_trimmed.shape[1], raw_struct['f_set']['ncols']
         )
     ], sort=False)
     
@@ -399,6 +466,7 @@ def save_to_workbook(df_formatted, xl_writer, out_sheet_name):
     xl_writer.close()
     return(True)
 
+
 ######################
 # Pipeline functions #
 ######################
@@ -420,14 +488,19 @@ def convert_df(
     # Validate raw data
     if with_validation:
         validate_raw_data(df_raw)
+        
+    # Remove unwanted values and resulting empty columns
+    df_trimmed = remove_unwanted_values(df_raw)
+    if with_validation:
+        validate_trimmed_data(df_trimmed)
     
     # Select and format the stem columns
-    df_stem = get_stem_columns(df_raw)
+    df_stem = get_stem_columns(df_trimmed)
     if with_validation:
         validate_stem_columns(df_stem)
     
     # Select and format the factor set columns
-    df_fsets = get_factor_sets(df_raw)
+    df_fsets = get_factor_sets(df_trimmed)
     if with_validation:
         validate_factor_sets(df_fsets)
     perils_implied = get_implied_perils(df_fsets)
@@ -500,6 +573,7 @@ def convert(
     
     return((out_filepath, out_sheet_name))
 
+
 #######################
 # Reloading functions #
 #######################
@@ -514,11 +588,12 @@ def load_formatted_spreadsheet(out_filepath, out_sheet_name):
         out_filepath, sheet_name=out_sheet_name,
         engine="openpyxl",  # As per: https://stackoverflow.com/a/60709194
         index_col=[0],
-    ).apply(lambda col: (
+    ).copy().apply(lambda col: (
         col if col.name in raw_struct['stem']['col_names'][0]
         else col.astype('float')
     ))
     return(df_reload)
+
 
 def formatted_dfs_are_equal(df1, df2, tol=1e-10):
     """Reasonableness checks between two DataFrames of output format"""
@@ -529,6 +604,7 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
         lambda col: np.abs(col - df2[col.name]) < tol
     ).all().all()
     return(True)
+
 
 ######################
 # Make CLI available #

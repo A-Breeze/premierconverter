@@ -23,12 +23,15 @@ This notebook is available in the following locations. These versions are kept i
 - In the GitHub project repo: <https://github.com/A-Breeze/premierconverter>. See the `README.md` for further instructions.
 <!-- #endregion -->
 
+# STOP PRESS
+There is a [known issue](#Known-issue) preventing this notebook from running on Windows. Decided not to fix it for the time being, because it will no longer be an issue when we move to using CSVs instead of Excel files.
+
 <!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->
 <!-- This table of contents is updated *manually* -->
 # Contents
 1. [Setup](#Setup): Import packages, Config variables
 1. [Variables](#Variables): Raw data structure, Inputs
-1. [Workflow](#Workflow): Load raw data, Stem section, Factor sets
+1. [Workflow](#Workflow): Load raw data, Remove unwanted extra values, Stem section, Factor sets
 1. [Using the functions](#Using-the-functions)
 1. [Unused rough work](#Unused-rough-work): Replace multiple string terms, Chained drop a column MultiIndex level
 <!-- #endregion -->
@@ -45,6 +48,8 @@ warnings.filterwarnings('always')
 # Ignore specific numpy warnings (as per <https://github.com/numpy/numpy/issues/11788#issuecomment-422846396>)
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
+# Other warnings that sometimes occur
+warnings.filterwarnings("ignore", message="unclosed file <_io.BufferedReader")
 ```
 
 ```python
@@ -127,6 +132,7 @@ print("Correct: All locations are available as expected")
 excel_extensions = ['.xlsx', '.xlsm', '.xltx', '.xltm']  # Note: .xls is *not* readable by openpyxl
 
 raw_struct = {
+    'stop_row_at': 'Total Peril Premium',
     'stem': {
         'ncols': 5,
         'chosen_cols': [0,1],
@@ -138,7 +144,7 @@ raw_struct = {
         'col_names': ['Peril_Factor', 'Relativity', 'Premium_increment', 'Premium_cumulative'],
         'col_types': [np.dtype('object')] + [np.dtype('float')] * 3,
     },
-    'bp_name': 'Base Premium'
+    'bp_name': 'Base Premium',
 }
 
 # Output variables, considered to be constants
@@ -293,19 +299,83 @@ df_raw = pd.read_excel(
 df_raw.head()
 ```
 
+## Remove unwanted extra values
+
+```python
+def set_na_after_val(row_sers, match_val):
+    """
+    Return a copy of `row_sers` with values on or after the 
+    first instance of `match_val` set to NaN (i.e. missing).
+    
+    row_sers: Series to look through
+    match_val: Scalar to find. If no occurrences are found, 
+        return a copy of the original Serires.
+    """
+    res = row_sers.to_frame('val').assign(
+        keep=lambda df: pd.Series(np.select(
+            # All matching values are set to 1.0
+            # Others are set to NaN
+            [df['val'] == match_val],
+            [1.0],
+            default=np.nan,
+        ), index=df.index).ffill(
+            # Forward fill so that all entries on or after the first
+            # match are set to 1.0, not NaN
+        ).isna(),  # Convert NaN/1.0 to True/False
+        # Take the original value, except where 'keep' is False,
+        # where the value is replaced with NaN.
+        new_val=lambda df: df['val'].where(df['keep'], np.nan)
+    )['new_val']
+    return(res)
+```
+
+```python
+def trim_na_cols(df):
+    """
+    Remove any columns on the right of a DataFrame `df` which have all missing 
+    values up to the first column with at least one non-missing value.
+    """
+    keep_col = df.isna().mean(
+        # Get proportion of each column that is missing.
+        # Columns with all missing values will have 1.0 proportion missing.
+    ).to_frame('prop_missing').assign(
+        keep=lambda df: pd.Series(np.select(
+            # All columns with at least one non-missing value are set to 1.0
+            # Others are set to NaN
+            [df['prop_missing'] < 1.],
+            [1.0],
+            default=np.nan,
+        ), index=df.index).bfill(
+            # Backward fill so that all columns on or before the last
+            # column with at least one non-missing value are set to 1.0
+        ).notna()  # Convert 1.0/NaN to True/False
+    )['keep']
+    return(df.loc[:, keep_col])
+```
+
+```python
+# Set unwanted values to NaN
+# and remove surplus columns (with all missing values) from the right
+df_trimmed = df_raw.apply(
+    set_na_after_val, match_val=raw_struct['stop_row_at'], axis=1
+).pipe(trim_na_cols)
+
+df_trimmed.head()
+```
+
 ```python
 # Check it is as expected
 if not (
     # At least the stem columns and one factor set column
-    df_raw.shape[1] >= 
+    df_trimmed.shape[1] >= 
     raw_struct['stem']['ncols'] + 1 * raw_struct['f_set']['ncols']
 ) or not (
     # Stem columns plus a multiple of factor set columns
-    (df_raw.shape[1] - raw_struct['stem']['ncols']) 
+    (df_trimmed.shape[1] - raw_struct['stem']['ncols']) 
     % raw_struct['f_set']['ncols'] == 0
 ):
     warnings.warn(
-        f"Raw data: Incorrect number of columns in workbook: {df_raw.shape[1] + 1}"
+        f"Trimmed data: Incorrect number of columns with relevant data: {df_trimmed.shape[1] + 1}"
         "\n\tThere should be: 1 for index, "
         f"{raw_struct['stem']['ncols']} for stem section, "
         f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
@@ -316,7 +386,7 @@ if not (
 
 ```python
 # Get the stem section of columns
-df_stem = df_raw.iloc[
+df_stem = df_trimmed.iloc[
     :, raw_struct['stem']['chosen_cols']
 ].pipe(  # Rename the columns
     lambda df: df.rename(columns=dict(zip(
@@ -346,7 +416,7 @@ if not (
 # Combine the rest of the DataFrame into one
 df_fsets = pd.concat([
     # For each of the factor sets of columns
-    df_raw.iloc[  # Select the columns
+    df_trimmed.iloc[  # Select the columns
         :, fset_start_col:(fset_start_col + raw_struct['f_set']['ncols'])
     ].dropna(  # Remove rows that have all missing values
         how="all"
@@ -355,7 +425,7 @@ df_fsets = pd.concat([
     )))).reset_index()  # Get row_ID as a column
 
     for fset_start_col in range(
-        raw_struct['stem']['ncols'], df_raw.shape[1], raw_struct['f_set']['ncols']
+        raw_struct['stem']['ncols'], df_trimmed.shape[1], raw_struct['f_set']['ncols']
     )
 ], sort=False)
 
@@ -609,6 +679,11 @@ df_formatted = PCon.convert_df(df_raw)
 df_formatted.head()
 ```
 
+### Known issue
+On Windows, the following `pd.read_excel`  using `openpyxl` is opening the file, but not closing the stream. This means the file is then locked for changes (e.g. deletion, later on in the script). As per: <https://github.com/pandas-dev/pandas/issues/29803> (not fixed at the time of writing). 
+
+Seeing as the next development step is to change from using Excel files to CSVs, I have not fixed this issue.
+
 ```python
 # Reload resulting data from workbook
 df_reload = PCon.load_formatted_spreadsheet(res_filepath, res_sheet_name)
@@ -629,10 +704,15 @@ if PCon.formatted_dfs_are_equal(df_formatted, df_expected):
     print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
 
+The following will fail due to a [known issue](#Known-issue).
+
 ```python
 # Delete the results workbook
-res_filepath.unlink()
-print("Workspace restored")
+try: 
+    res_filepath.unlink()
+    print("Workspace restored")
+except PermissionError:
+    print("File deletion has FAILED due to a known error")
 ```
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
@@ -671,7 +751,7 @@ def multi_replace(base_str, replacement_dict):
 #     columns=lambda x: '', level = 'Peril'
 # ).rename(
 #     columns=lambda x: '', level = 'Custom_order'
-# ).stack([0,1]).reset_index(level=[1,2], drop=True)
+# ).stack([0,1])#.reset_index(level=[1,2], drop=True)
 
 # df_base_factors.head()
 ```

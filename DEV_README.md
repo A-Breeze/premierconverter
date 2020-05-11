@@ -37,6 +37,7 @@ The development requirements consist of the package dependencies, plus extra pac
     ```
     conda env create -f binder\environment.yml --force
     conda activate premcon_dev_env
+    jupyter lab
     ```
 
 <p align="right"><a href="#top">Back to top</a></p>
