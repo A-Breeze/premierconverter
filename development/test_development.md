@@ -22,14 +22,16 @@ Notebook for considering what automated tests the project should implement. The 
 <!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->
 <!-- This table of contents is updated *manually* -->
 # Contents
-1. [Setup](#Setup)
-1. [Data for tests](#Data-for-tests)
+1. [Setup](#Setup): Import packages, Utility functions, Configuration variables
 1. [Typical workflow](#Typical-workflow)
+    - [Data for tests](#Data-for-tests)
+    - [Test steps](#Test-steps): Setup, Test, Teardown
+1. [Integration tests](#Integration-tests):
+    - [Succeeding examples](#Succeeding-examples)
+    - [Overwriting an existing file](#Overwriting-an-existing-file)
+    - [Exceptions raised](#Exceptions-raised)
 1. [Unit tests](#Unit-tests):
     - [Utility functions](#Utility-functions)
-    - [TBA](#TBA)
-1. [Integration tests](#Integration-tests):
-    - [`convert` pipeline](#convert-pipeline)
 <!-- #endregion -->
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
@@ -87,17 +89,6 @@ print(f'premierconverter version:\t{PCon.__version__}')
 ```
 
 ```python
-# Configuration variables
-if on_kaggle:
-    raw_data_folder_path = Path('/kaggle/input') / 'dummy-premier-data-raw'
-else:
-    import proj_config
-    raw_data_folder_path = proj_config.example_data_dir_path
-assert raw_data_folder_path.is_dir()
-print("Correct: All locations are available as expected")
-```
-
-```python
 # Utility functions
 def add_one_to_index(df):
     """Add 1 to the index values of a Series of DataFrame"""
@@ -131,7 +122,8 @@ print("Correct: Location for temporary storage of test files is available and em
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
 
-# Data for tests
+# Typical workflow
+## Data for tests
 Define some minimal data that can be used for unit tests. Consists of `raw` data for input and `expected` data to compare against results. We'll define individual rows and select which we want the input data for each test. The raw data can also be saved to a file to test the whole pipeline.
 
 ```python
@@ -149,7 +141,7 @@ df_raw_row02 = pd.Series([
     'AnotherPrlFactor1', 1.064887, 6.59, 108.15,
     'Peril1 Base Premium', 0.0, 100.55, 100.55, 
     'AnotherPrlSomeFact', 0.648875, -37.97, 70.18,
-    'Total Peril Premium',
+    'Total Peril Premium', 2, 'extra text and figures',
 ]).pipe(add_one_to_index)
 df_raw_row_error = pd.Series([
     'Some text that indicates an error', 0.0, np.nan, np.nan, 4,
@@ -179,19 +171,22 @@ df_expected_01 = pd.DataFrame(
 df_expected_01
 ```
 
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
-
-# Typical workflow
+## Test steps
+### Setup
+Create the input data file.
 
 ```python
-# Setup
 in_filepath = tmp_dir_path / 't01_typical_input.csv'
 df_raw_01 = pd.DataFrame([
     df_raw_row01, df_raw_row02, df_raw_row_error
 ]).pipe(add_one_to_index)
 df_raw_01.to_csv(in_filepath, index=True, header=None)
+```
 
-# Check it has been created correctly
+### Test
+
+```python
+# Check data can be loaded
 df_raw_01_from_csv = PCon.read_raw_data(in_filepath)
 assert (df_raw_01_from_csv.index == df_raw_01.index).all()
 assert (df_raw_01_from_csv.dtypes == df_raw_01.dtypes).all()
@@ -204,7 +199,7 @@ assert (
     df_raw_01_from_csv.select_dtypes(exclude=['int', 'float']).astype(str) == 
     df_raw_01.select_dtypes(exclude=['int', 'float']).astype(str)
 ).all().all()
-print("Correct: The CSV that has been created can be loaded from CSV and matches")
+print("Correct: The CSV that has been created can be loaded and matches")
 ```
 
 ```python
@@ -236,12 +231,10 @@ if PCon.formatted_dfs_are_equal(df_formatted_01, df_expected_01):
     print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
 
-```python
-res_filepath.is_file()
-```
+### Teardown
+Delete the files that have been created
 
 ```python
-# Teardown: Delete the files that have been created
 [filepath.unlink() 
  for filepath in [in_filepath, res_filepath] 
  if filepath.is_file()]
@@ -251,12 +244,20 @@ print("Correct: Workspace restored")
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
 
-# Unit tests
-**TODO**: Write this section
+# Integration tests
+## Succeeding examples
 
 ```python
 
 ```
+
+## Overwriting an existing file
+
+```python
+
+```
+
+## Exceptions raised
 
 ```python
 
@@ -264,11 +265,98 @@ print("Correct: Workspace restored")
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
 
-# Integration tests
-**TODO**: Write this section
+# Unit tests
+## Utility functions
+### `set_na_after_val`
 
 ```python
+# Given: `match_val` occurs in `row_sers` 
+args_to_try = [
+    {'row_sers': pd.Series([1, 'Total premium', 7]), 'match_val': 'Total premium'},
+    {'row_sers': pd.Series(['Total premium', 'foo', 7]), 'match_val': 'Total premium'},
+    {'row_sers': pd.Series([np.nan, 'Total premium', np.nan]), 'match_val': 'Total premium'},
+    {'row_sers': pd.Series([np.nan, 5, 'Total premium', np.nan]), 'match_val': 'Total premium'},
+]
 
+for args in args_to_try:
+    row_sers, match_val = args['row_sers'], args['match_val']
+    
+    # When: Apply the function
+    actual_result = PCon.set_na_after_val(row_sers, match_val)
+    
+    # Then: Expect values match up before the first instance of `match_val`
+    # and are np.nan after that
+    index_before_first_match = row_sers.index[row_sers == match_val].min() - 1
+    expected_result = pd.Series(
+        row_sers.loc[:index_before_first_match].to_list() + 
+        [np.nan] * (row_sers.shape[0] - index_before_first_match - 1)
+    )
+    assert (row_sers.index == actual_result.index).all()
+    assert pd.concat([
+        actual_result.to_frame('actual'), expected_result.to_frame('expected')
+    ], axis=1).assign(compare=lambda df: (
+        df['actual'] == df['expected']) | (
+        df['actual'].isna() & df['expected'].isna()
+    ))['compare'].all()
+print("Correct: All examples pass the test")
+```
+
+```python
+# Given: `match_val` does *not* occur in `row_sers` 
+args_to_try = [
+    {'row_sers': pd.Series([1]), 'match_val': 2},
+    {'row_sers': pd.Series([]), 'match_val': ''},
+    {'row_sers': pd.Series(['Total premium ', 'total premium', 't0tal premium']),
+     'match_val': 'Total premium'},  # Close, but not quite
+    {'row_sers': pd.Series([np.nan]), 'match_val': 1.},
+]
+# When: Apply the function
+# Then: Expect that the `row_sers` is returned unchanged
+for args in args_to_try:
+    assert args['row_sers'].equals(PCon.set_na_after_val(**args))
+print("Correct: All examples pass the test")
+```
+
+### `trim_na_cols`
+
+```python
+# Given: A DataFrame with one row
+dfs_to_try = [
+    pd.DataFrame.from_dict({0: [1, np.nan]}, orient='index'),
+    pd.DataFrame.from_dict({0: [np.nan]}, orient='index'),
+    pd.DataFrame.from_dict({'foo': [np.nan, 'hi']}, orient='index'),
+    pd.DataFrame.from_dict({0: ['test', np.nan, np.nan, -3, np.nan]}, orient='index'),
+]
+# When: Apply the function
+# Then: Columns with NaN value and only NaNs to the right are removed 
+# and the rest stays the same.
+for df in dfs_to_try:
+    non_na_cols = df.columns[df.notna().iloc[0,:]]
+    if non_na_cols.shape[0] > 0:
+        assert df.loc[:,:non_na_cols[-1]].equals(PCon.trim_na_cols(df))
+    else:
+        assert df.loc[:,[False] * df.shape[1]].equals(PCon.trim_na_cols(df))
+print("Correct: All examples pass the test")
+```
+
+```python
+# Given: A DataFrame with some missing values
+dfs_to_try = [
+    pd.DataFrame([
+        [1, 2., np.nan],
+        [7, np.nan, -.5]
+    ]),
+    pd.DataFrame([
+        [np.nan],
+        [np.nan, 'foo', np.nan]
+    ]),
+    pd.DataFrame([[np.nan] * 3, [np.nan]])
+]
+# When: Apply the function
+# Then: The number of non-missing values remains constant
+for df in dfs_to_try:
+    assert df.notna().sum().sum() == PCon.trim_na_cols(df).notna().sum().sum()
+print("Correct: All examples pass the test")
 ```
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>

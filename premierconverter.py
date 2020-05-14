@@ -152,21 +152,28 @@ def set_na_after_val(row_sers, match_val):
     match_val: Scalar to find. If no occurrences are found,
         return a copy of the original Serires.
     """
-    res = row_sers.to_frame('val').assign(
-        keep=lambda df: pd.Series(np.select(
-            # All matching values are set to 1.0
-            # Others are set to NaN
-            [df['val'] == match_val],
-            [1.0],
-            default=np.nan,
-        ), index=df.index).ffill(
-            # Forward fill so that all entries on or after the first
-            # match are set to 1.0, not NaN
-        ).isna(),  # Convert NaN/1.0 to True/False
-        # Take the original value, except where 'keep' is False,
-        # where the value is replaced with NaN.
-        new_val=lambda df: df['val'].where(df['keep'], np.nan)
-    )['new_val']
+    with warnings.catch_warnings():
+        # Warning occurs if match_val is a string but row_sers contains numeric values.
+        # More info here: <https://stackoverflow.com/a/46721064>
+        warnings.filterwarnings(
+            action='ignore', 
+            message="elementwise comparison failed; returning scalar"
+        )
+        res = row_sers.to_frame('val').assign(
+            keep=lambda df: pd.Series(np.select(
+                # All matching values are set to 1.0
+                # Others are set to NaN
+                [df['val'] == match_val],
+                [1.0],
+                default=np.nan,
+            ), index=df.index).ffill(
+                # Forward fill so that all entries on or after the first
+                # match are set to 1.0, not NaN
+            ).isna(),  # Convert NaN/1.0 to True/False
+            # Take the original value, except where 'keep' is False,
+            # where the value is replaced with NaN.
+            new_val=lambda df: df['val'].where(df['keep'], np.nan)
+        )['new_val']
     return res
 
 
