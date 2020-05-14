@@ -37,9 +37,14 @@ RAW_STRUCT = {
     'bp_name': 'Base Premium',
 }
 
-# Output variables, considered to be constants
+# Output variables, considered to be constants or defaults
 # Column name of the row IDs
 ROW_ID_NAME = "Ref_num"
+
+OUTPUT_DEFAULTS = {
+    'pf_sep': ' ',
+    'file_delimiter': ','
+}
 
 ######################
 # Workflow functions #
@@ -90,7 +95,7 @@ def validate_output_options(out_filepath, force_overwrite=False):
     return None
 
 
-def read_raw_data(in_filepath, nrows=None, file_delimiter=','):
+def read_raw_data(in_filepath, nrows=None, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """
     Load data from file
 
@@ -120,7 +125,7 @@ def read_raw_data(in_filepath, nrows=None, file_delimiter=','):
     return df_raw
 
 
-def validate_raw_data(df_raw, file_delimiter=','):
+def validate_raw_data(df_raw, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """Checks on the loaded raw data"""
     if df_raw.shape[1] == 0:
         warnings.warn(
@@ -339,7 +344,7 @@ def split_peril_factor(df_fsets, perils_implied):
     return df_fsets_split
 
 
-def get_base_prems(df_fsets_split, pf_sep=" "):
+def get_base_prems(df_fsets_split, pf_sep=OUTPUT_DEFAULTS['pf_sep']):
     """
     Get the Base Premiums for all row_IDs and Perils
     pf_sep: Seperator for Peril_Factor column names in output
@@ -373,7 +378,7 @@ def validate_base_prems(df_base_prems):
 def get_all_factor_relativities(
     df_fsets_split,
     include_factors=None,
-    pf_sep=' '
+    pf_sep=OUTPUT_DEFAULTS['pf_sep']
 ):
     """
     Ensure every row_ID has a row for every Peril, Factor combination
@@ -450,7 +455,7 @@ def join_stem_to_base_factors(df_stem, df_base_factors):
     return df_formatted
 
 
-def save_to_csv(df_formatted, out_filepath, file_delimiter=","):
+def save_to_csv(df_formatted, out_filepath, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """Save DataFrame to specified output location"""
     df_formatted.to_csv(
         out_filepath,
@@ -465,7 +470,7 @@ def save_to_csv(df_formatted, out_filepath, file_delimiter=","):
 def convert_df(
     df_raw,
     include_factors=None,
-    pf_sep=" ",
+    pf_sep=OUTPUT_DEFAULTS['pf_sep'],
     with_validation=True,
 ):
     """
@@ -520,7 +525,7 @@ def convert(
     out_filepath,
     force_overwrite=False,
     nrows=None,
-    file_delimiter=',',
+    file_delimiter=OUTPUT_DEFAULTS['file_delimiter'],
     **kwargs,
 ):
     """
@@ -565,7 +570,7 @@ def convert(
 #######################
 # Reloading functions #
 #######################
-def load_formatted_file(out_filepath, file_delimiter=','):
+def load_formatted_file(out_filepath, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """
     Utility function to load data from output file
 
@@ -639,7 +644,7 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
 )
 @click.option(
     '--sep', '-s', 'file_delimiter',
-    type=str, default=",", show_default=True,
+    type=str, default=OUTPUT_DEFAULTS["file_delimiter"], show_default=True,
     help='Separator for in and out files.',
 )
 @click.option(
