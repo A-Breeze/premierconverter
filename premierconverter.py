@@ -77,7 +77,7 @@ def validate_output_options(out_filepath, force_overwrite=False):
     if not out_filepath.parent.is_dir():
         raise FileNotFoundError(
             f"\n\tout_filepath: The folder of the output file does not exist"
-            f"Folder path: '{out_filepath.parent}'"
+            f"\n\tFolder path: '{out_filepath.parent.absolute()}'"
             "\n\tCreate the output folder before running this command"
         )
 
@@ -87,7 +87,7 @@ def validate_output_options(out_filepath, force_overwrite=False):
             f"\n\t'{out_filepath.absolute()}'"
             "\n\tIf you want to overwrite it, re-run with `force_overwrite = True`"
         )
-    if out_filepath.suffix not in ACCEPTED_FILE_EXTENSIONS:
+    if out_filepath.suffix.lower() not in ACCEPTED_FILE_EXTENSIONS:
         warnings.warn(
             f"out_filepath: The output file extension '{out_filepath.suffix}' "
             f"is not one of the recognised file extensions {ACCEPTED_FILE_EXTENSIONS}",
