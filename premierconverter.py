@@ -54,7 +54,7 @@ def validate_input_options(in_filepath):
     # Ensure inputs are correct format
     in_filepath = Path(in_filepath)
 
-    # Checks the file exists and is an Excel file
+    # Checks the file exists and has an appropriate extension
     if not in_filepath.is_file():
         raise FileNotFoundError(
             "\n\tin_filepath: There is no file at the input location:"
