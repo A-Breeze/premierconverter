@@ -30,7 +30,6 @@ This notebook is available in the following locations. These versions are kept i
 1. [Variables](#Variables): Raw data structure, Inputs
 1. [Workflow](#Workflow): Load raw data, Remove unwanted extra values, Stem section, Factor sets, Output to CSV, Load expected output to check it is as expected
 1. [Using the functions](#Using-the-functions)
-1. [Unused rough work](#Unused-rough-work): Replace multiple string terms, Chained drop a column MultiIndex level
 <!-- #endregion -->
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
@@ -159,7 +158,7 @@ if include_factors is None:
 nrows = None
 
 # Seperator for Peril_Factor column names in output
-pf_sep = '_'
+pf_sep = ' '
 ```
 
 ```python

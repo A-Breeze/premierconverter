@@ -332,7 +332,7 @@ def split_peril_factor(df_fsets, perils_implied):
     return df_fsets_split
 
 
-def get_base_prems(df_fsets_split, pf_sep="_"):
+def get_base_prems(df_fsets_split, pf_sep=" "):
     """
     Get the Base Premiums for all row_IDs and Perils
     pf_sep: Seperator for Peril_Factor column names in output
@@ -366,7 +366,7 @@ def validate_base_prems(df_base_prems):
 def get_all_factor_relativities(
     df_fsets_split,
     include_factors=None,
-    pf_sep='_'
+    pf_sep=' '
 ):
     """
     Ensure every row_ID has a row for every Peril, Factor combination
@@ -458,7 +458,7 @@ def save_to_csv(df_formatted, out_filepath, file_delimiter=","):
 def convert_df(
     df_raw,
     include_factors=None,
-    pf_sep="_",
+    pf_sep=" ",
     with_validation=True,
 ):
     """
