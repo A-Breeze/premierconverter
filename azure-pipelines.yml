@@ -4,10 +4,14 @@
 # Main page for YAML schema (contains links to more detail on each command):
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema
 
+# Note: PRs in Azure DevOps repos do *not* trigger a Pipeline to run.
+#   (In GitHub, PRs *do* trigger Azure Pipelines to run.)
+#   The workaround is to set Pipelines to be triggered depending on branch
+#   or run them ad hoc manually by going to the Pipeline in DevOps and 'Run'
 # To select which branches to run *all* tasks on push to remote repo
 # (but the 'condition' for each stage / job / step still needs to be met)
-trigger: none
-# - master
+trigger:
+- master
 # To select which branches to run *all* tasks creating a pull request
 # (but the 'condition' for each stage / job / step still needs to be met)
 # pr:
