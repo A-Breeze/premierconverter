@@ -40,6 +40,23 @@ The development requirements consist of the package dependencies, plus extra pac
     jupyter lab
     ```
 
+### Setting JupyterLab Terminal
+On Binder (i.e. Linux), the default Terminal in JupyterLab is Bash, which this project uses.
+
+For JupyterLab on Windows, the default Terminal is Powershell. However, on Windows, this project has been developed using Commmand Prompt (**CMD**). To ensure that JupyterLab uses CMD, you can change the Jupyter settings (at system level):
+- Generate a Jupter config file with all the default settings (commented out), saved in the correct location (e.g. `~/.jupyter/`):
+    ```
+    # jupyter notebook --generate-config  # [Commented out so you don't re-run it]
+    jupyter --config-dir   # This is the location of the config file
+    notepad %USERPROFILE%/.jupyter/jupyter_notebook_config.py   # Open the location
+    ```
+- To set the specific setting for JupterLab Terminal:
+    ```
+    c.NotebookApp.terminado_settings = {'shell_command': ['cmd']}
+    ```
+- Further info: <https://jupyter-notebook.readthedocs.io/en/stable/config.html>
+- If you want to change the Jupyter settings at project level, try changing the `JUPYTER_CONFIG_DIR` as per: <https://jupyter.readthedocs.io/en/latest/projects/jupyter-directories.html#configuration-files>
+
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Structure of the repo
