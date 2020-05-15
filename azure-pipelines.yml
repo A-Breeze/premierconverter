@@ -33,7 +33,7 @@ stages:
     steps:
     - template: azure_templates/env_for_package.yml
     - script: |
-        pytest /tests
+        pytest tests/
       displayName: 'Run tests'
   - job: Windows
     pool:
@@ -45,7 +45,7 @@ stages:
     steps:
     - template: azure_templates/env_for_package.yml
     - script: |
-        pytest /tests
+        pytest tests/
       displayName: 'Run tests'
 
 - stage: Build_and_Publish
