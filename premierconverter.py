@@ -161,7 +161,7 @@ def set_na_after_val(row_sers, match_val):
         # Warning occurs if match_val is a string but row_sers contains numeric values.
         # More info here: <https://stackoverflow.com/a/46721064>
         warnings.filterwarnings(
-            action='ignore', 
+            action='ignore',
             message="elementwise comparison failed; returning scalar"
         )
         res = row_sers.to_frame('val').assign(

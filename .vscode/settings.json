@@ -13,6 +13,8 @@
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestArgs": [
-        "tests"
-    ]
+        "tests",
+        // "--capture=no",  // For debugging: Show stdout for all tests (not just failures)
+    ],
+    "python.testing.autoTestDiscoverOnSaveEnabled": false
 }

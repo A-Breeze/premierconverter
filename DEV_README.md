@@ -93,10 +93,19 @@ pip install -e .
 ```
 
 ### Run automated tests
-Ensure the package is installed.
 ```
-pytest
+pytest tests/
 ```
+Note:
+- Ensure the package is installed before running the above, if you want to test the built version.
+- To see what tests pytest will discover, without actually running the tests (useful for debugging):
+    ```
+    pytest --collect-only tests/
+    ```
+- By default, `print()` statements in the test (i.e. to `stdout`) will only be shown for *failed* tests. To show them for *all* tests (including successes) on the order of tests that are run:
+    ```
+    pytest --capture=no tests/
+    ```
 
 ### Build package
 The following will create a *source* distribution and a *wheel* distribution out of the Python package (given it includes a `setup.py`), and puts the resulting files in `build/` (for some intermediate files from the wheel build) and `dist/` (for the final source and wheel distributions) subfolders.
@@ -123,6 +132,7 @@ jupytext --to notebook --output development/compiled/data-conversion-challenge-2
 To check code formatting using `pylint`.
 ```
 pylint premierconverter.py
+pylint tests/
 ```
 
 <p align="right"><a href="#top">Back to top</a></p>

@@ -477,7 +477,7 @@ in_filepath = tmp_dir_path / 'tmp_input.csv'
 out_filepath = tmp_dir_path / 't04_output.csv'
 
 # Given: Input data
-df_raw_01 = create_input_data_csv(in_filepath)
+_ = create_input_data_csv(in_filepath)
 
 # When: We run the CLI with default arguments
 runner = CliRunner()
