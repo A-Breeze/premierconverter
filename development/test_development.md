@@ -168,9 +168,8 @@ df_raw_row_error = pd.Series([
 ]).pipe(add_one_to_index)
 
 # Typical raw DataFrame input
-df_raw_01 = pd.DataFrame([
-    df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03
-]).pipe(add_one_to_index)
+input_rows_lst = [df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03]
+df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
 df_raw_01.head()
 ```
 
@@ -203,9 +202,7 @@ Create the input data file.
 
 ```python
 in_filepath = tmp_dir_path / 'tmp_input.csv'
-df_raw_01 = pd.DataFrame([
-    df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03
-]).pipe(add_one_to_index)
+df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
 df_raw_01.to_csv(in_filepath, index=True, header=None)
 ```
 
@@ -274,12 +271,9 @@ print("Correct: Workspace restored")
 Where tests are looking for specific aspects of the input or output data, the data can be created on an ad hoc basis. However, many tests just need some reasonable, minimal data - which is specified here, so it can be easily recreated / used for each such test.
 
 ```python
-def create_input_data_csv(
-    in_filepath,
-    input_rows=[df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03]
-):
+def create_input_data_csv(in_filepath, input_rows_lst):
     """Creates the input DataFrame and saves it as a CSV at `in_filepath`"""
-    df_raw_01 = pd.DataFrame(input_rows).pipe(add_one_to_index)
+    df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
     df_raw_01.to_csv(in_filepath, index=True, header=None)
     return(df_raw_01)
 ```
@@ -345,7 +339,7 @@ in_filepath = tmp_dir_path / 'tmp_input.csv'
 out_filepath = tmp_dir_path / 't01_output.csv'
 
 # Given: Input data
-df_raw_01 = create_input_data_csv(in_filepath)
+_ = create_input_data_csv(in_filepath, input_rows_lst)
 
 # When: Apply function
 res_filepath = PCon.convert(in_filepath, out_filepath)
@@ -371,7 +365,7 @@ in_filepath = tmp_dir_path / 'tmp_input.csv'
 out_filepath = tmp_dir_path / 't02_output.csv'
 
 # Given: Input data
-df_raw_01 = create_input_data_csv(in_filepath)
+_ = create_input_data_csv(in_filepath, input_rows_lst)
 
 # When: Apply function with limited rows
 nrows = 2  # Possible values: [2, 4, 5, None]
@@ -401,7 +395,7 @@ in_filepath = tmp_dir_path / 'tmp_input.csv'
 out_filepath = tmp_dir_path / 't03_output.csv'
 
 # Given: Input data and a file already exists in the output location
-df_raw_01 = create_input_data_csv(in_filepath)
+_ = create_input_data_csv(in_filepath, input_rows_lst)
 
 out_file_str = 'Some basic file contents'
 _ = out_filepath.write_text(out_file_str)
@@ -477,7 +471,7 @@ in_filepath = tmp_dir_path / 'tmp_input.csv'
 out_filepath = tmp_dir_path / 't04_output.csv'
 
 # Given: Input data
-_ = create_input_data_csv(in_filepath)
+_ = create_input_data_csv(in_filepath, input_rows_lst)
 
 # When: We run the CLI with default arguments
 runner = CliRunner()
@@ -512,7 +506,7 @@ in_filepath = tmp_dir_path / 'tmp_input.csv'
 out_filepath = tmp_dir_path / 't05_output.csv'
 
 # Given: Input data
-df_raw_01 = create_input_data_csv(in_filepath)
+_ = create_input_data_csv(in_filepath, input_rows_lst)
 
 # When: We run the CLI with option for limited number of rows
 nrows = 2  # Possible values: [2, 4, 5, None]
@@ -547,14 +541,12 @@ print("Correct: Workspace restored")
 
 ```python
 # Setup
-in_filepath = tmp_dir_path / 'tmp_input.csv'
-out_filepath = tmp_dir_path / 't06_output.csv'
+in_filepath = tmp_dir_path / 'tmp_input.txt'
+out_filepath = tmp_dir_path / 't06_output'
 
 # Given: Input data with custom separator character
-custom_sep = '|'  # Can parametrise this value, e.g. ['|', '___', '\t']
-df_raw_01 = pd.DataFrame(
-    [df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03]
-).pipe(add_one_to_index)
+custom_sep = '|'  # Can parametrise this value with various length-one strings, e.g. ['|', '_', '\t']
+df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
 df_raw_01.to_csv(in_filepath, index=True, header=None, sep=custom_sep)
 
 # When: We run the CLI with option for limited number of rows
@@ -590,7 +582,7 @@ in_filepath = tmp_dir_path / 'tmp_input.csv'
 out_filepath = tmp_dir_path / 't07_output.csv'
 
 # Given: Input data and a file already exists in the output location
-df_raw_01 = create_input_data_csv(in_filepath)
+_ = create_input_data_csv(in_filepath, input_rows_lst)
 
 out_file_str = 'Some basic file contents'
 _ = out_filepath.write_text(out_file_str)
@@ -598,9 +590,7 @@ assert out_filepath.read_text() == out_file_str  # Check it has worked
 
 # When: We run the CLI with default arguments (i.e. not force overwrite)
 runner = CliRunner()
-result = runner.invoke(
-    PCon.cli, [str(in_filepath), str(out_filepath)]
-)
+result = runner.invoke(PCon.cli, [str(in_filepath), str(out_filepath)])
 
 # Then: The CLI command exits with an error
 assert result.exit_code == 1
@@ -639,10 +629,7 @@ out_filepath = tmp_dir_path / 't08_output.csv'
 
 # When: We run the CLI with no arguments
 runner = CliRunner()
-result = runner.invoke(
-    PCon.cli,
-    []
-)
+result = runner.invoke(PCon.cli, [])
 
 # Then: The CLI command exits with an error
 assert result.exit_code == 2
@@ -665,12 +652,9 @@ assert not in_filepath.is_file()
 in_filepath.write_text('Some text for the file')
 assert in_filepath.is_file()
 
-# When: We run the CLI with an input file that does not exist
+# When: We run the CLI with an input file that exists but no output file
 runner = CliRunner()
-result = runner.invoke(
-    PCon.cli,
-    [str(in_filepath)]
-)
+result = runner.invoke(PCon.cli, [str(in_filepath)])
 
 # Then: The CLI command exits with an error
 assert result.exit_code == 2
@@ -687,14 +671,11 @@ print("Correct: Workspace restored")
 ```python
 # Setup
 in_filepath = tmp_dir_path / 'tmp_input.csv'
-out_filepath = tmp_dir_path / 't09_output.csv'
+out_filepath = tmp_dir_path / 't10_output.csv'
 
 # When: We run the CLI with an input file that does not exist
 runner = CliRunner()
-result = runner.invoke(
-    PCon.cli,
-    [str(in_filepath), str(out_filepath)]
-)
+result = runner.invoke(PCon.cli, [str(in_filepath), str(out_filepath)])
 
 # Then: The CLI command exits with an error
 assert result.exit_code == 2

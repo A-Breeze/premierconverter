@@ -62,53 +62,57 @@ def get_output_col_names(perils, factors):
          )]
     )
 
-#############
-# Test data #
-#############
-# Typical raw rows
-df_raw_row01 = pd.Series([
-    'Ok', 96.95, np.nan, np.nan, 9,
-    'Peril1 Base Premium', 0.0, 91.95, 91.95,
-    'AnotherPrlBase Premium', 0.0, 5.17, 5.17,
-    'Peril1Factor1', 0.99818, -0.17, 91.78,
-    'Total Peril Premium', '[some more text]',
-]).pipe(add_one_to_index)
-df_raw_row02 = pd.Series([
-    'Ok', 170.73, np.nan, np.nan, 11,
-    'AnotherPrlBase Premium', 0.0, 101.56, 101.56,
-    'AnotherPrlFactor1', 1.064887, 6.59, 108.15,
-    'Peril1 Base Premium', 0.0, 100.55, 100.55,
-    'AnotherPrlSomeFact', 0.648875, -37.97, 70.18,
-    'Total Peril Premium', 2, 'extra text and figures',
-]).pipe(add_one_to_index)
-df_raw_row03 = pd.Series([
-    'Ok', 161.68, np.nan, np.nan, 5,
-    'Peril1NewFact', 0.999998, 0.0, 110.34,
-    'Peril1Factor1', 1.2, 18.39, 110.34,
-    np.nan, np.nan, np.nan, np.nan,
-    'AnotherPrlBase Premium', 0, 51.34, 51.34,
-    'Peril1 Base Premium', 0.0, 91.95, 91.95,
-    'Total Peril Premium', np.nan,
-]).pipe(add_one_to_index)
-df_raw_row_error = pd.Series([
-    'Some text that indicates an error', 0.0, np.nan, np.nan, 4,
-]).pipe(add_one_to_index)
-
-def create_input_data_csv(
-    in_filepath,
-    input_rows=[df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03]
-):
+def create_input_data_csv(in_filepath, input_rows_lst):
     """Creates the input DataFrame and saves it as a CSV at `in_filepath`"""
-    df_raw_01 = pd.DataFrame(input_rows).pipe(add_one_to_index)
+    df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
     df_raw_01.to_csv(in_filepath, index=True, header=None)
     return df_raw_01
 
+#############
+# Test data #
+#############
 @pytest.fixture(scope='session')  # Runs just once for the whole session
-def df_expected_tests():
+def input_rows_lst():
+    """
+    Get a list of typical raw rows that can be used to form a
+    DataFrame of default input data.
+    """
+    df_raw_row01 = pd.Series([
+        'Ok', 96.95, np.nan, np.nan, 9,
+        'Peril1 Base Premium', 0.0, 91.95, 91.95,
+        'AnotherPrlBase Premium', 0.0, 5.17, 5.17,
+        'Peril1Factor1', 0.99818, -0.17, 91.78,
+        'Total Peril Premium', '[some more text]',
+    ]).pipe(add_one_to_index)
+    df_raw_row02 = pd.Series([
+        'Ok', 170.73, np.nan, np.nan, 11,
+        'AnotherPrlBase Premium', 0.0, 101.56, 101.56,
+        'AnotherPrlFactor1', 1.064887, 6.59, 108.15,
+        'Peril1 Base Premium', 0.0, 100.55, 100.55,
+        'AnotherPrlSomeFact', 0.648875, -37.97, 70.18,
+        'Total Peril Premium', 2, 'extra text and figures',
+    ]).pipe(add_one_to_index)
+    df_raw_row03 = pd.Series([
+        'Ok', 161.68, np.nan, np.nan, 5,
+        'Peril1NewFact', 0.999998, 0.0, 110.34,
+        'Peril1Factor1', 1.2, 18.39, 110.34,
+        np.nan, np.nan, np.nan, np.nan,
+        'AnotherPrlBase Premium', 0, 51.34, 51.34,
+        'Peril1 Base Premium', 0.0, 91.95, 91.95,
+        'Total Peril Premium', np.nan,
+    ]).pipe(add_one_to_index)
+    df_raw_row_error = pd.Series([
+        'Some text that indicates an error', 0.0, np.nan, np.nan, 4,
+    ]).pipe(add_one_to_index)
+    return [df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03]
+
+@pytest.fixture(scope='session')  # Runs just once for the whole session
+def df_expected_tests(input_rows_lst):
     """
     Get a dictionary of the expected outputs for the default input data
     and particular number of rows `nrows` converted
     """
+    df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03 = input_rows_lst
     df_expected_tests = dict()
 
     # Full output
