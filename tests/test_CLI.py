@@ -11,7 +11,7 @@ from click.testing import CliRunner
 
 # Import project modules
 import premierconverter as PCon
-from . import conftest
+from .conftest import create_input_data_csv, add_one_to_index
 
 ####################
 # Version and help #
@@ -50,7 +50,7 @@ def test_CLI10_default_arguments(tmp_dir_path, input_rows_lst, df_expected_tests
     # Given: Input data and output location
     in_filepath = tmp_dir_path / 'tmp_input.csv'
     out_filepath = tmp_dir_path / 't04_output.csv'
-    _ = conftest.create_input_data_csv(in_filepath, input_rows_lst)
+    _ = create_input_data_csv(in_filepath, input_rows_lst)
 
     # When: We run the CLI with default arguments
     runner = CliRunner()
@@ -75,7 +75,7 @@ def test_CLI11_nrows(tmp_dir_path, input_rows_lst, df_expected_tests, nrows):
     # Given: Input data and output location
     in_filepath = tmp_dir_path / 'tmp_input.csv'
     out_filepath = tmp_dir_path / 't05_output.csv'
-    _ = conftest.create_input_data_csv(in_filepath, input_rows_lst)
+    _ = create_input_data_csv(in_filepath, input_rows_lst)
 
     # When: We run the CLI with option for limited number of rows
     runner = CliRunner()
@@ -103,7 +103,7 @@ def test_CLI12_custom_separator(tmp_dir_path, input_rows_lst, df_expected_tests,
     # Given: Input data and output location
     in_filepath = tmp_dir_path / 'tmp_input.txt'
     out_filepath = tmp_dir_path / 't06_output'
-    df_raw_01 = pd.DataFrame(input_rows_lst).pipe(conftest.add_one_to_index)
+    df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
     df_raw_01.to_csv(in_filepath, index=True, header=None, sep=custom_sep)
 
     # When: We run the CLI with option for limited number of rows
@@ -136,7 +136,7 @@ def test_CLI20_force_overwrite(tmp_dir_path, input_rows_lst, df_expected_tests):
     out_filepath = tmp_dir_path / 't07_output.csv'
 
     # Given: Input data and a file already exists in the output location
-    _ = conftest.create_input_data_csv(in_filepath, input_rows_lst)
+    _ = create_input_data_csv(in_filepath, input_rows_lst)
 
     out_file_str = 'Some basic file contents'
     _ = out_filepath.write_text(out_file_str)

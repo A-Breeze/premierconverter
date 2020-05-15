@@ -343,9 +343,9 @@ _ = create_input_data_csv(in_filepath, input_rows_lst)
 
 # When: Apply function
 res_filepath = PCon.convert(in_filepath, out_filepath)
-df_reload_01 = PCon.load_formatted_file(res_filepath) # Reload resulting data from workbook
 
 # Then: Result is as expected
+df_reload_01 = PCon.load_formatted_file(res_filepath)  # Reload resulting data from workbook
 assert PCon.formatted_dfs_are_equal(df_reload_01, df_expected_tests[4])
 print("Correct: The reloaded values are equal, up to floating point tolerance")
 
@@ -370,9 +370,9 @@ _ = create_input_data_csv(in_filepath, input_rows_lst)
 # When: Apply function with limited rows
 nrows = 2  # Possible values: [2, 4, 5, None]
 res_filepath = PCon.convert(in_filepath, out_filepath, nrows=nrows)
-df_reload_01 = PCon.load_formatted_file(res_filepath) # Reload resulting data from workbook
 
 # Then: Result is as expected
+df_reload_01 = PCon.load_formatted_file(res_filepath)
 assert PCon.formatted_dfs_are_equal(
     df_reload_01,
     df_expected_tests[min(nrows if nrows is not None else 100, 4)]
@@ -403,15 +403,12 @@ assert out_filepath.read_text() == out_file_str  # Check it has worked
 
 # When: Apply function with default arguments (i.e. not force overwrite)
 # Then: It throws an error and does not change the existing file
-err = None
-try:
+with pytest.raises(FileExistsError) as err:
     PCon.convert(in_filepath, out_filepath)
-except Exception as e:
-    err = e
 assert err is not None  # An error was thrown...
-assert isinstance(err, FileExistsError)  # ...of this specific type
-assert 'File already exists' in str(err)  # The error message contains is helpful...
-assert str(out_filepath.absolute()) in str(err)  # ...and contains the filepath
+assert isinstance(err.value, FileExistsError)  # ...of this specific type
+assert 'File already exists' in str(err.value)  # The error message contains is helpful...
+assert str(out_filepath.absolute()) in str(err.value)  # ...and contains the filepath
 assert out_filepath.read_text() == out_file_str  # The file contents are unchanged
 print("Correct: File was not overwritten and helpful error message was thrown")
 
