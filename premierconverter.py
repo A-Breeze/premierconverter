@@ -3,7 +3,7 @@ Automate the conversion of raw data into a specified format of data to make it m
 """
 # pylint: disable=bad-continuation, useless-return
 
-__version__ = '0.3.1'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
+__version__ = '0.3.2'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
 
 #########
 # Setup #
@@ -37,9 +37,14 @@ RAW_STRUCT = {
     'bp_name': 'Base Premium',
 }
 
-# Output variables, considered to be constants
+# Output variables, considered to be constants or defaults
 # Column name of the row IDs
 ROW_ID_NAME = "Ref_num"
+
+OUTPUT_DEFAULTS = {
+    'pf_sep': ' ',
+    'file_delimiter': ','
+}
 
 ######################
 # Workflow functions #
@@ -49,7 +54,7 @@ def validate_input_options(in_filepath):
     # Ensure inputs are correct format
     in_filepath = Path(in_filepath)
 
-    # Checks the file exists and is an Excel file
+    # Checks the file exists and has an appropriate extension
     if not in_filepath.is_file():
         raise FileNotFoundError(
             "\n\tin_filepath: There is no file at the input location:"
@@ -64,7 +69,7 @@ def validate_input_options(in_filepath):
     return None
 
 
-def validate_output_options(out_filepath, force_overwrite=False):
+def validate_output_options(out_filepath, *, force_overwrite=False):
     """Checks on out_filepath"""
     # Ensure inputs are correct format
     out_filepath = Path(out_filepath)
@@ -72,7 +77,7 @@ def validate_output_options(out_filepath, force_overwrite=False):
     if not out_filepath.parent.is_dir():
         raise FileNotFoundError(
             f"\n\tout_filepath: The folder of the output file does not exist"
-            f"Folder path: '{out_filepath.parent}'"
+            f"\n\tFolder path: '{out_filepath.parent.absolute()}'"
             "\n\tCreate the output folder before running this command"
         )
 
@@ -82,7 +87,7 @@ def validate_output_options(out_filepath, force_overwrite=False):
             f"\n\t'{out_filepath.absolute()}'"
             "\n\tIf you want to overwrite it, re-run with `force_overwrite = True`"
         )
-    if out_filepath.suffix not in ACCEPTED_FILE_EXTENSIONS:
+    if out_filepath.suffix.lower() not in ACCEPTED_FILE_EXTENSIONS:
         warnings.warn(
             f"out_filepath: The output file extension '{out_filepath.suffix}' "
             f"is not one of the recognised file extensions {ACCEPTED_FILE_EXTENSIONS}",
@@ -90,7 +95,7 @@ def validate_output_options(out_filepath, force_overwrite=False):
     return None
 
 
-def read_raw_data(in_filepath, nrows=None, file_delimiter=','):
+def read_raw_data(in_filepath, nrows=None, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """
     Load data from file
 
@@ -120,7 +125,7 @@ def read_raw_data(in_filepath, nrows=None, file_delimiter=','):
     return df_raw
 
 
-def validate_raw_data(df_raw, file_delimiter=','):
+def validate_raw_data(df_raw, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """Checks on the loaded raw data"""
     if df_raw.shape[1] == 0:
         warnings.warn(
@@ -152,21 +157,28 @@ def set_na_after_val(row_sers, match_val):
     match_val: Scalar to find. If no occurrences are found,
         return a copy of the original Serires.
     """
-    res = row_sers.to_frame('val').assign(
-        keep=lambda df: pd.Series(np.select(
-            # All matching values are set to 1.0
-            # Others are set to NaN
-            [df['val'] == match_val],
-            [1.0],
-            default=np.nan,
-        ), index=df.index).ffill(
-            # Forward fill so that all entries on or after the first
-            # match are set to 1.0, not NaN
-        ).isna(),  # Convert NaN/1.0 to True/False
-        # Take the original value, except where 'keep' is False,
-        # where the value is replaced with NaN.
-        new_val=lambda df: df['val'].where(df['keep'], np.nan)
-    )['new_val']
+    with warnings.catch_warnings():
+        # Warning occurs if match_val is a string but row_sers contains numeric values.
+        # More info here: <https://stackoverflow.com/a/46721064>
+        warnings.filterwarnings(
+            action='ignore',
+            message="elementwise comparison failed; returning scalar"
+        )
+        res = row_sers.to_frame('val').assign(
+            keep=lambda df: pd.Series(np.select(
+                # All matching values are set to 1.0
+                # Others are set to NaN
+                [df['val'] == match_val],
+                [1.0],
+                default=np.nan,
+            ), index=df.index).ffill(
+                # Forward fill so that all entries on or after the first
+                # match are set to 1.0, not NaN
+            ).isna(),  # Convert NaN/1.0 to True/False
+            # Take the original value, except where 'keep' is False,
+            # where the value is replaced with NaN.
+            new_val=lambda df: df['val'].where(df['keep'], np.nan)
+        )['new_val']
     return res
 
 
@@ -332,7 +344,7 @@ def split_peril_factor(df_fsets, perils_implied):
     return df_fsets_split
 
 
-def get_base_prems(df_fsets_split, pf_sep="_"):
+def get_base_prems(df_fsets_split, pf_sep=OUTPUT_DEFAULTS['pf_sep']):
     """
     Get the Base Premiums for all row_IDs and Perils
     pf_sep: Seperator for Peril_Factor column names in output
@@ -366,7 +378,7 @@ def validate_base_prems(df_base_prems):
 def get_all_factor_relativities(
     df_fsets_split,
     include_factors=None,
-    pf_sep='_'
+    pf_sep=OUTPUT_DEFAULTS['pf_sep']
 ):
     """
     Ensure every row_ID has a row for every Peril, Factor combination
@@ -443,7 +455,7 @@ def join_stem_to_base_factors(df_stem, df_base_factors):
     return df_formatted
 
 
-def save_to_csv(df_formatted, out_filepath, file_delimiter=","):
+def save_to_csv(df_formatted, out_filepath, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """Save DataFrame to specified output location"""
     df_formatted.to_csv(
         out_filepath,
@@ -458,7 +470,7 @@ def save_to_csv(df_formatted, out_filepath, file_delimiter=","):
 def convert_df(
     df_raw,
     include_factors=None,
-    pf_sep="_",
+    pf_sep=OUTPUT_DEFAULTS['pf_sep'],
     with_validation=True,
 ):
     """
@@ -513,7 +525,7 @@ def convert(
     out_filepath,
     force_overwrite=False,
     nrows=None,
-    file_delimiter=',',
+    file_delimiter=OUTPUT_DEFAULTS['file_delimiter'],
     **kwargs,
 ):
     """
@@ -538,7 +550,7 @@ def convert(
 
     # Validate function inputs
     validate_input_options(in_filepath)
-    validate_output_options(out_filepath, force_overwrite)
+    validate_output_options(out_filepath, force_overwrite=force_overwrite)
 
     # Load raw data
     df_raw = read_raw_data(in_filepath, nrows, file_delimiter)
@@ -558,7 +570,7 @@ def convert(
 #######################
 # Reloading functions #
 #######################
-def load_formatted_file(out_filepath, file_delimiter=','):
+def load_formatted_file(out_filepath, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """
     Utility function to load data from output file
 
@@ -632,7 +644,7 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
 )
 @click.option(
     '--sep', '-s', 'file_delimiter',
-    type=str, default=",", show_default=True,
+    type=str, default=OUTPUT_DEFAULTS["file_delimiter"], show_default=True,
     help='Separator for in and out files.',
 )
 @click.option(

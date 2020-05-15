@@ -4,12 +4,16 @@
 # Main page for YAML schema (contains links to more detail on each command):
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema
 
+# Note: PRs in Azure DevOps repos do *not* trigger a Pipeline to run.
+#   (In GitHub, PRs *do* trigger Azure Pipelines to run.)
+#   The workaround is to set Pipelines to be triggered depending on branch
+#   or run them ad hoc manually by going to the Pipeline in DevOps and 'Run'
 # To select which branches to run *all* tasks on push to remote repo
-# (but the 'condition' for each stage / job / step still need to be met)
-trigger: none
-# - master
+# (but the 'condition' for each stage / job / step still needs to be met)
+trigger:
+- master
 # To select which branches to run *all* tasks creating a pull request
-# (but the 'condition' for each stage / job / step still need to be met)
+# (but the 'condition' for each stage / job / step still needs to be met)
 # pr:
 # - master
 
@@ -22,6 +26,8 @@ stages:
 - stage: Test
   jobs:
   - job: Linux
+    # Condition to only run this stage on a specified branch
+    condition: eq(variables['Build.SourceBranchName'], 'branch_name_here')
     pool:
       vmImage: 'ubuntu-latest'
     strategy:
@@ -31,7 +37,7 @@ stages:
     steps:
     - template: azure_templates/env_for_package.yml
     - script: |
-        pytest
+        pytest tests/
       displayName: 'Run tests'
   - job: Windows
     pool:
@@ -43,12 +49,12 @@ stages:
     steps:
     - template: azure_templates/env_for_package.yml
     - script: |
-        pytest
+        pytest tests/
       displayName: 'Run tests'
 
 - stage: Build_and_Publish
   # Condition to only run this stage on a specified branch
-  # condition: eq(variables['Build.SourceBranchName'], 'master')
+  condition: eq(variables['Build.SourceBranchName'], 'branch_name_here')
 
   # Specify that this job depends on another having already run
   dependsOn: Test
