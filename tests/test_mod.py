@@ -9,9 +9,9 @@ import pytest
 import premierconverter as PCon
 from .conftest import create_input_data_csv
 
-###########################
+#######################
 # Succeeding examples #
-###########################
+#######################
 def test_mod00_default_arguments(tmp_dir_path, input_rows_lst, df_expected_tests):
     """Default arguments"""
     # Setup
