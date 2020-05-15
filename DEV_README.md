@@ -67,17 +67,17 @@ For JupyterLab on Windows, the default Terminal is Powershell. However, on Windo
 - `LICENSE`: Terms of use.
 
 ### Package data
-- `example_data/`: Docs and data to use during development and include in the package. No data is currently committed to the repo.
+- `example_data/`: Docs and data to use during development and include in the package. No data files are currently committed to the repo.
 - `proj_config.py`: Store the repo structure in variables so that scripts throughout the project can access relevant locations of the project.
 
 ### Development
 - `DEV_README.md`: Information for developing the package.
-- `binder/` and `requirements_dev.txt`: Development environment specifications for launching Binder.
-- `development/`: Code and docs used during development. Manually kept in sync with package code base. Could form the basis of future code additions or automated tests.
+- `binder/` and `requirements_dev.txt`: Development environment specifications, for launching Binder or running on Windows.
+- `development/`: Code and docs used during development. Manually kept in sync with package code base. Could be used to form the basis of future code additions or additional automated tests.
 
 ### CI/CD
 - `tests/`: Automated tests on the package.
-- `azure-pipelines` and `azure_templates/`: Specifications for tasks to run in the CI pipeline on the Azure Pipeline.
+- `azure-pipelines` and `azure_templates/`: Specifications for tasks to run in the CI pipeline on an Azure Pipeline.
 
 <p align="right"><a href="#top">Back to top</a></p>
 
@@ -86,11 +86,12 @@ For JupyterLab on Windows, the default Terminal is Powershell. However, on Windo
 While developing the package, we can install it from the local code (without needing to build and then install) as follows:
 ```
 python -m venv venv
-source venv/bin/activate
+venv\Scripts\activate.bat
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
 ```
+- In Bash (e.g. on Linux), the `activate` line is different: `source venv/bin/activate`
 
 ### Run automated tests
 ```
@@ -155,12 +156,7 @@ pylint tests/
 ## Future ideas
 Backlog of all possible ideas, big or small, high priority or low.
 
-### Known issues
-- When you set `force_overwrite=True` to write data into an existing worksheet, only values in the affected cells are replaced. So, if there are values in any other cells prior to running the app, they *remain* after the data has been written. Presumably it would be more desirable to clear values from the entire sheet (but not to delete it, in case there are formulae relying on it).
-
 ### Additional functionality
-- Allow the default of `output_sheet_name` to be the *first* sheet in the workbook (i.e. guaranteed to exist for existing workbooks), rather than `Sheet1`. This avoids the situation where the user is expecting to overwrite a one-sheet workbook, but the sheet is not called `Sheet1`.
-- Validate that the first column of the raw data (which goes in to form the `Ref_num` index) contains ordered, unique values.
 - Validation checks on the consistency of premium values against what is expected.
 
 ### UI
@@ -169,13 +165,7 @@ Backlog of all possible ideas, big or small, high priority or low.
     - a web framework, e.g. `bokeh`.
 
 ### Tests
-- Create up `pytest` fixtures to allow setup / teardown for the Excel spreadsheets for testing
-- Create tests for the `click` CLI
-- Aspects to test:
-    - Expected functionality
-    - Expected failures / warnings
-    - Edge cases
-    - Benchmark performance
+- Benchmark performance
 
 ### Documentation
 - How to:
@@ -187,8 +177,7 @@ Backlog of all possible ideas, big or small, high priority or low.
     - (Compiled) notebook (works well on GitHub)
     - Markdown
 
-### Development process:
-- Use `pylint` to check the code quality.
+### Development process
 - Use `pytest-cov` to check the coverage (although it will be very low).
 - Consider relaxing the dependency version requirements to minimum, rather than strict, versions.
 - Investigate using `tox` to run tests on with various dependency versions.
