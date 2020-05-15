@@ -69,7 +69,7 @@ def validate_input_options(in_filepath):
     return None
 
 
-def validate_output_options(out_filepath, force_overwrite=False):
+def validate_output_options(out_filepath, *, force_overwrite=False):
     """Checks on out_filepath"""
     # Ensure inputs are correct format
     out_filepath = Path(out_filepath)
@@ -550,7 +550,7 @@ def convert(
 
     # Validate function inputs
     validate_input_options(in_filepath)
-    validate_output_options(out_filepath, force_overwrite)
+    validate_output_options(out_filepath, force_overwrite=force_overwrite)
 
     # Load raw data
     df_raw = read_raw_data(in_filepath, nrows, file_delimiter)
