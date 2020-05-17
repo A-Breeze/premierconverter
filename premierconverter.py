@@ -355,6 +355,8 @@ def get_all_factor_relativities(
     # Set defaults
     if include_factors is None:
         include_factors = []
+    if isinstance(include_factors, str):
+        include_factors = [include_factors]
 
     df_factors = df_fsets_split.query(
         # Get only the Factor rows
@@ -641,7 +643,7 @@ def cli(  # pylint: disable=too-many-arguments
     <input filepath>: Path to file containing the raw data
 
     <output filepath>: Path where the resulting file should go.
-    If it does not exist, a new workbook will be created.
+    If it does not exist, a new file will be created.
     The directory must already exist.
     """
     # Pass parameters to convert()

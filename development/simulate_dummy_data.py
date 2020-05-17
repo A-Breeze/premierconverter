@@ -282,6 +282,7 @@ def generate_input_data_csv(input_rows_lst, in_filepath=None, *, force_overwrite
         )
         return None
     in_filepath.write_text(infile_str)
+    print(f"File created here: {in_filepath.absolute()}")
     return None
 
 
