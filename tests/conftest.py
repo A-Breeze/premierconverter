@@ -62,11 +62,40 @@ def get_output_col_names(perils, factors):
          )]
     )
 
-def create_input_data_csv(in_filepath, input_rows_lst):
-    """Creates the input DataFrame and saves it as a CSV at `in_filepath`"""
-    df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
-    df_raw_01.to_csv(in_filepath, index=True, header=None)
-    return df_raw_01
+def simulate_row_str(row_id, in_row_sers):
+    """
+    Convert an `in_row_sers` into a string that looks like an input file row.
+    row_id: The index column value that you want for the row.
+    """
+    return(
+        str(row_id) + ',"' + in_row_sers[1] + '",' +
+        pd.DataFrame([in_row_sers[1:]]).to_csv(
+            header=False, index=False, line_terminator="\n"
+        )
+    )
+
+def generate_input_data_csv(input_rows_lst, in_filepath=None, *, force_overwrite=False):
+    """
+    Creates the input CSV from a list of input rows at `in_filepath`.
+    If in_filepath is not specified, return the string that would have been saved.
+    """
+    infile_str = ''.join(
+        simulate_row_str(row_id + 1, row) for row_id, row in enumerate(input_rows_lst)
+    )
+    if in_filepath is None:
+        return infile_str
+    in_filepath = Path(in_filepath)
+    if in_filepath.is_file() and not force_overwrite:
+        print(
+            "\n\tgenerate_input_data_csv: A file already exists at `in_filepath`:"
+            f"\n\t{in_filepath.absolute()}"
+            "\n\tThis has *not* been overwritten. To overwrite it, re-run"
+            "\n\tthis command with `force_overwrite=True`"
+        )
+        return None
+    in_filepath.write_text(infile_str)
+    print(f"File created here: {in_filepath.absolute()}")
+    return None
 
 #############
 # Test data #
@@ -77,14 +106,14 @@ def input_rows_lst():
     Get a list of typical raw rows that can be used to form a
     DataFrame of default input data.
     """
-    df_raw_row01 = pd.Series([
-        'Ok', 96.95, np.nan, np.nan, 9,
-        'Peril1 Base Premium', 0.0, 91.95, 91.95,
-        'AnotherPrlBase Premium', 0.0, 5.17, 5.17,
+    in_row_sers_01 = pd.Series([
+    'Ok', 96.95, np.nan, np.nan, 9,
+    'Peril1 Base Premium', 0.0, 91.95, 91.95,
+    'AnotherPrlBase Premium', 0.0, 5.17, 5.17,
         'Peril1Factor1', 0.99818, -0.17, 91.78,
         'Total Peril Premium', '[some more text]',
     ]).pipe(add_one_to_index)
-    df_raw_row02 = pd.Series([
+    in_row_sers_02 = pd.Series([
         'Ok', 170.73, np.nan, np.nan, 11,
         'AnotherPrlBase Premium', 0.0, 101.56, 101.56,
         'AnotherPrlFactor1', 1.064887, 6.59, 108.15,
@@ -92,7 +121,7 @@ def input_rows_lst():
         'AnotherPrlSomeFact', 0.648875, -37.97, 70.18,
         'Total Peril Premium', 2, 'extra text and figures',
     ]).pipe(add_one_to_index)
-    df_raw_row03 = pd.Series([
+    in_row_sers_03 = pd.Series([
         'Ok', 161.68, np.nan, np.nan, 5,
         'Peril1NewFact', 0.999998, 0.0, 110.34,
         'Peril1Factor1', 1.2, 18.39, 110.34,
@@ -101,10 +130,20 @@ def input_rows_lst():
         'Peril1 Base Premium', 0.0, 91.95, 91.95,
         'Total Peril Premium', np.nan,
     ]).pipe(add_one_to_index)
-    df_raw_row_error = pd.Series([
-        'Some text that indicates an error', 0.0, np.nan, np.nan, 4,
+
+    # An error row
+    in_row_sers_error = pd.Series([
+        'Error: Some text, that indicates an error.', 0.0, np.nan, np.nan, 4,
     ]).pipe(add_one_to_index)
-    return [df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03]
+
+    # A declined row
+    in_row_sers_declined = pd.Series([
+        'Declined', np.nan, np.nan, np.nan, 4,
+        'Some more text on a declined row', 'even, more. text', np.nan, 0, 0,
+    ]).pipe(add_one_to_index)
+    return [
+        in_row_sers_01, in_row_sers_02, in_row_sers_error,
+        in_row_sers_03, in_row_sers_declined]
 
 @pytest.fixture(scope='session')  # Runs just once for the whole session
 def df_expected_tests(input_rows_lst):
@@ -112,25 +151,33 @@ def df_expected_tests(input_rows_lst):
     Get a dictionary of the expected outputs for the default input data
     and particular number of rows `nrows` converted
     """
-    df_raw_row01, df_raw_row02, df_raw_row_error, df_raw_row03 = input_rows_lst
+    (
+        in_row_sers_01, in_row_sers_02, in_row_sers_error,
+        in_row_sers_03, in_row_sers_declined
+    ) = input_rows_lst
     df_expected_tests = dict()
 
-    # Full output
+    # Output from 4 rows
     df_expected_tests[4] = pd.DataFrame(
         columns=get_output_col_names(
             perils=['AnotherPrl', 'Peril1'],
             factors=['Factor1', 'NewFact', 'SomeFact']
         ),
         data=[
-            (df_raw_row01[[1, 2, 5+4*2]].to_list() + [1.] * 3 +
-            df_raw_row01[[5+4*1, 5+4*2+2]].to_list() + [1.] * 2),
-            (df_raw_row02[[1, 2, 5+4*1, 5+4*1+2]].to_list() + [1.] +
-            df_raw_row02[[5+4*3+2, 5+4*3]].to_list() + [1.] * 3),
-            df_raw_row_error[[1]].to_list() + [0.] * 9,
-            (df_raw_row03[[1, 2, 5+4*4]].to_list() + [1.] * 3 +
-            df_raw_row03[[5+4*5, 5+4*1+2, 5+2]].to_list() + [1.])
+            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 3 +
+            in_row_sers_01[[5+4*1, 5+4*2+2]].to_list() + [1.] * 2),
+            (in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2]].to_list() + [1.] +
+            in_row_sers_02[[5+4*3+2, 5+4*3]].to_list() + [1.] * 3),
+            in_row_sers_error[[1]].to_list() + [0.] * 9,
+            (in_row_sers_03[[1, 2, 5+4*4]].to_list() + [1.] * 3 +
+            in_row_sers_03[[5+4*5, 5+4*1+2, 5+2]].to_list() + [1.])
         ],
     ).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
+
+    # Output including the additional 5th 'declined' row
+    df_expected_tests[5] = df_expected_tests[4].append(
+        pd.Series({PCon.RAW_STRUCT['stem']['col_names'][0]: in_row_sers_declined[1]}, name=5)
+    ).fillna(0.)
 
     # Output from 2 rows
     df_expected_tests[2] = pd.DataFrame(
@@ -139,9 +186,23 @@ def df_expected_tests(input_rows_lst):
             factors=['Factor1', 'SomeFact']
         ),
         data=[
-            (df_raw_row01[[1, 2, 5+4*2]].to_list() + [1.] * 2 +
-            df_raw_row01[[5+4*1, 5+4*2+2]].to_list() + [1.]),
-            df_raw_row02[[1, 2, 5+4*1, 5+4*1+2, 5+4*3+2, 5+4*3]].to_list() + [1.] * 2,
+            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 2 +
+            in_row_sers_01[[5+4*1, 5+4*2+2]].to_list() + [1.]),
+            in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2, 5+4*3+2, 5+4*3]].to_list() + [1.] * 2,
+        ],
+    ).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
+
+    # Output from 2 rows but including additional factor
+    df_expected_tests['2_all_facts'] = pd.DataFrame(
+        columns=get_output_col_names(
+            perils=['AnotherPrl', 'Peril1'],
+            factors=['Factor1', 'NewFact', 'SomeFact']
+        ),
+        data=[
+            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 3 +
+            in_row_sers_01[[5+4*1, 5+4*2+2]].to_list() + [1.] * 2),
+            (in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2]].to_list() + [1.] +
+            in_row_sers_02[[5+4*3+2, 5+4*3]].to_list() + [1.] * 3),
         ],
     ).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
 

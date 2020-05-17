@@ -6,12 +6,11 @@
 #########
 # Import external modules
 import pytest
-import pandas as pd
 from click.testing import CliRunner
 
 # Import project modules
 import premierconverter as PCon
-from .conftest import create_input_data_csv, add_one_to_index
+from .conftest import generate_input_data_csv
 
 ####################
 # Version and help #
@@ -38,8 +37,8 @@ def test_CLI01_help():
     assert 'Usage: cli [OPTIONS] <input filepath> <output filepath>\n' in result.output
     assert '--force' in result.output
     assert '-r, --nrows INTEGER' in result.output
-    assert '-s, --sep TEXT' in result.output
     assert '-n, --no_checks' in result.output
+    assert '-p, --hide_progress' in result.output
     print("Correct: Help is available and useful from the CLI")
 
 ###########################
@@ -47,10 +46,12 @@ def test_CLI01_help():
 ###########################
 def test_CLI10_default_arguments(tmp_dir_path, input_rows_lst, df_expected_tests):
     """Default arguments"""
-    # Given: Input data and output location
+    # Setup
     in_filepath = tmp_dir_path / 'tmp_input.csv'
     out_filepath = tmp_dir_path / 't04_output.csv'
-    _ = create_input_data_csv(in_filepath, input_rows_lst)
+
+    # Given: Input data
+    _ = generate_input_data_csv(input_rows_lst, in_filepath)
 
     # When: We run the CLI with default arguments
     runner = CliRunner()
@@ -62,20 +63,24 @@ def test_CLI10_default_arguments(tmp_dir_path, input_rows_lst, df_expected_tests
     # Then: The CLI command completes successfully
     # and the resulting output data is as expected
     assert result.exit_code == 0
-    assert result.output == f"Output saved here:\t{out_filepath.absolute()}\n"
+    assert f"Output saved here: {out_filepath.absolute()}\n" in result.output
+    for step_num in range(1, 6):
+        assert f"Step {step_num}" in result.output
     print("Correct: CLI has completed without error and with correct message")
 
     df_reload_01 = PCon.load_formatted_file(out_filepath)
-    assert PCon.formatted_dfs_are_equal(df_reload_01, df_expected_tests[4])
+    assert PCon.formatted_dfs_are_equal(df_reload_01, df_expected_tests[5])
     print("Correct: The reloaded values are equal, up to floating point tolerance")
 
 @pytest.mark.parametrize("nrows", [None, 2, 4, 100])
 def test_CLI11_nrows(tmp_dir_path, input_rows_lst, df_expected_tests, nrows):
     """Give the argument to limit the number of rows"""
-    # Given: Input data and output location
+    # Setup
     in_filepath = tmp_dir_path / 'tmp_input.csv'
     out_filepath = tmp_dir_path / 't05_output.csv'
-    _ = create_input_data_csv(in_filepath, input_rows_lst)
+
+    # Given: Input data
+    _ = generate_input_data_csv(input_rows_lst, in_filepath)
 
     # When: We run the CLI with option for limited number of rows
     runner = CliRunner()
@@ -87,40 +92,14 @@ def test_CLI11_nrows(tmp_dir_path, input_rows_lst, df_expected_tests, nrows):
     # Then: The CLI command completes successfully
     # and the resulting output data is as expected
     assert result.exit_code == 0
-    assert result.output == f"Output saved here:\t{out_filepath.absolute()}\n"
+    assert f"Output saved here: {out_filepath.absolute()}\n" in result.output
     print("Correct: CLI has completed without error and with correct message")
 
     df_reload_01 = PCon.load_formatted_file(out_filepath)
     assert PCon.formatted_dfs_are_equal(
         df_reload_01,
-        df_expected_tests[min(nrows if nrows is not None else 100, 4)]
+        df_expected_tests[min(nrows if nrows is not None else 100, 5)]
     )
-    print("Correct: The reloaded values are equal, up to floating point tolerance")
-
-@pytest.mark.parametrize("custom_sep", ['|', '_', '\t'])
-def test_CLI12_custom_separator(tmp_dir_path, input_rows_lst, df_expected_tests, custom_sep):
-    """Give a custom separator for the input and output files"""
-    # Given: Input data and output location
-    in_filepath = tmp_dir_path / 'tmp_input.txt'
-    out_filepath = tmp_dir_path / 't06_output'
-    df_raw_01 = pd.DataFrame(input_rows_lst).pipe(add_one_to_index)
-    df_raw_01.to_csv(in_filepath, index=True, header=None, sep=custom_sep)
-
-    # When: We run the CLI with option for limited number of rows
-    runner = CliRunner()
-    result = runner.invoke(PCon.cli, [
-        str(in_filepath), str(out_filepath),
-        '-s', custom_sep,
-    ])
-
-    # Then: The CLI command completes successfully
-    # and the resulting output data is as expected
-    assert result.exit_code == 0
-    assert result.output == f"Output saved here:\t{out_filepath.absolute()}\n"
-    print("Correct: CLI has completed without error and with correct message")
-
-    df_reload_01 = PCon.load_formatted_file(out_filepath, file_delimiter=custom_sep)
-    assert PCon.formatted_dfs_are_equal(df_reload_01, df_expected_tests[4])
     print("Correct: The reloaded values are equal, up to floating point tolerance")
 
 #######################
@@ -136,7 +115,7 @@ def test_CLI20_force_overwrite(tmp_dir_path, input_rows_lst, df_expected_tests):
     out_filepath = tmp_dir_path / 't07_output.csv'
 
     # Given: Input data and a file already exists in the output location
-    _ = create_input_data_csv(in_filepath, input_rows_lst)
+    _ = generate_input_data_csv(input_rows_lst, in_filepath)
 
     out_file_str = 'Some basic file contents'
     _ = out_filepath.write_text(out_file_str)
@@ -148,7 +127,6 @@ def test_CLI20_force_overwrite(tmp_dir_path, input_rows_lst, df_expected_tests):
 
     # Then: The CLI command exits with an error
     assert result.exit_code == 1
-    assert result.output == ''
     assert result.exception  # An error was thrown...
     assert isinstance(result.exception, FileExistsError)  # ...of this specific type
     assert 'File already exists' in str(result.exception)  # The error message contains is helpful..
@@ -163,7 +141,7 @@ def test_CLI20_force_overwrite(tmp_dir_path, input_rows_lst, df_expected_tests):
 
     # Then: Result is as expected
     df_reload_01 = PCon.load_formatted_file(out_filepath)  # Reload resulting data from workbook
-    assert PCon.formatted_dfs_are_equal(df_reload_01, df_expected_tests[4])
+    assert PCon.formatted_dfs_are_equal(df_reload_01, df_expected_tests[5])
     print("Correct: The reloaded values are equal, up to floating point tolerance")
 
 #########################

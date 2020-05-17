@@ -3,7 +3,7 @@ Automate the conversion of raw data into a specified format of data to make it m
 """
 # pylint: disable=bad-continuation, useless-return
 
-__version__ = '0.3.2'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
+__version__ = '0.3.3'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
 
 #########
 # Setup #
@@ -11,6 +11,7 @@ __version__ = '0.3.2'   # Ensure this is kept in-sync with VERSION in the SETUP.
 # Import built-in modules
 from pathlib import Path
 import warnings
+import io
 
 # Import external modules
 import numpy as np
@@ -20,6 +21,7 @@ import click
 # Configuration variables for the expected format and structure of the data
 ACCEPTED_FILE_EXTENSIONS = ['.csv', '', '.txt']
 INPUT_FILE_ENCODINGS = ['utf-8', 'latin-1', 'ISO-8859-1']
+INPUT_SEPARATOR = ","
 
 RAW_STRUCT = {
     'stop_row_at': 'Total Peril Premium',
@@ -30,12 +32,16 @@ RAW_STRUCT = {
         'col_types': [np.dtype('object'), np.dtype('float')],
     },
     'f_set': {
+        'include_Test_Status': ['Ok'],
         'ncols': 4,
+        # Note: 'Peril_Factor' column name is hard-coded in various locations
+        # so should not be altered by changing the value here.
         'col_names': ['Peril_Factor', 'Relativity', 'Premium_increment', 'Premium_cumulative'],
         'col_types': [np.dtype('object')] + [np.dtype('float')] * 3,
     },
     'bp_name': 'Base Premium',
 }
+TRUNC_AFTER_REGEX = r",\s*{}.*".format(RAW_STRUCT['stop_row_at'])
 
 # Output variables, considered to be constants or defaults
 # Column name of the row IDs
@@ -95,133 +101,87 @@ def validate_output_options(out_filepath, *, force_overwrite=False):
     return None
 
 
-def read_raw_data(in_filepath, nrows=None, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
-    """
-    Load data from file
+def read_input_lines(in_filepath, nrows=None, sep_regex=TRUNC_AFTER_REGEX):
+    r"""
+    Read input CSV lines, with regex separator `sep_regex`.
+    It is envisaged that `sep_regex` will be of the form ",\s*<specific term>.*",
+    so that each line will be truncated after the first occurrence of <specific term>.
 
-    in_filepath: Location of the file to read
-    nrows: Maximum number of rows to read
-    file_delimiter: Character that separates input values in lines
-    Returns: The loaded DataFrame, if it is successful
+    Returns: The input lines as a DataFrame, if it is successful
     """
-    df_raw = None
+    in_lines_trunc_df = None
     for encoding in INPUT_FILE_ENCODINGS:
         try:
-            df_raw = pd.read_csv(
-                in_filepath,
-                header=None, index_col=0, nrows=nrows,
-                sep=file_delimiter, encoding=encoding
-            ).rename_axis(index=ROW_ID_NAME)
+            in_lines_trunc_df = pd.read_csv(
+                in_filepath, header=None, index_col=False,
+                nrows=nrows, sep=sep_regex,
+                engine='python', encoding=encoding,
+            )
             # print(f"'{encoding}': Success")  # Used for debugging only
             break
         except UnicodeDecodeError:
             # print(f"'{encoding}': Fail")  # Used for debugging only
             pass
-    if df_raw is None:
+    if in_lines_trunc_df is None:
         raise IOError(
-            "\n\tread_raw_data: pandas.read_csv() failed."
+            "\n\tread_input_lines: pandas.read_csv() failed."
             f"\n\tFile cannot be read with any of the encodings: {INPUT_FILE_ENCODINGS}"
         )
-    return df_raw
+    return in_lines_trunc_df
 
 
-def validate_raw_data(df_raw, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
-    """Checks on the loaded raw data"""
-    if df_raw.shape[1] == 0:
+def validate_input_lines_trunc(in_lines_trunc_df, sep_regex=TRUNC_AFTER_REGEX):
+    """Checks on the loaded input lines"""
+    if in_lines_trunc_df.shape[0] <= 1:
         warnings.warn(
-            "Raw data: No columns of data have been read. "
-            "Are you sure you have specified the correct file? "
-            f"Are values seperated by the character '{file_delimiter}'?"
-        )
-    if df_raw.shape[0] <= 1:
-        warnings.warn(
-            "Raw data: Only one row of data has been read. "
+            "Raw data lines: Only one row of data has been read. "
             "Are you sure you have specified the correct file? "
             "Are rows of data split into lines of the file?"
         )
-    if not df_raw.index.is_unique:
+    if not ((
+        in_lines_trunc_df.shape[1] == 1
+    ) or (
+        in_lines_trunc_df.iloc[:, 1].isna().sum() == in_lines_trunc_df.shape[0]
+    )):
         warnings.warn(
-            f"Raw data: Row identifiers '{ROW_ID_NAME}' are not unique. "
-            "This may lead to unexpected results."
+            "Raw data lines: A line in the input data has more than one match "
+            f"to the regex pattern \"{sep_regex}\". "
+            "Are you sure you have specified the correct file?"
         )
     return None
 
 
-# Helper functions to remove unwanted values
-def set_na_after_val(row_sers, match_val):
+def split_lines_to_df(in_lines_trunc_df):
     """
-    Return a copy of `row_sers` with values on or after the
-    first instance of `match_val` set to NaN (i.e. missing).
+    For a column of strings that each represent the line of a CSV
+    (and each line may have a different number of separators),
+    read them into a DataFrame.
 
-    row_sers: Series to look through
-    match_val: Scalar to find. If no occurrences are found,
-        return a copy of the original Serires.
+    in_lines_trunc_df: Assumes that the relevant column is `0`
+    Returns: The resulting DataFrame
     """
     with warnings.catch_warnings():
-        # Warning occurs if match_val is a string but row_sers contains numeric values.
-        # More info here: <https://stackoverflow.com/a/46721064>
+        # Ignore dtype warnings at this point, because we check them later on (after casting)
         warnings.filterwarnings(
-            action='ignore',
-            message="elementwise comparison failed; returning scalar"
+            "ignore", message='.*Specify dtype option on import or set low_memory=False',
+            category=pd.errors.DtypeWarning,
         )
-        res = row_sers.to_frame('val').assign(
-            keep=lambda df: pd.Series(np.select(
-                # All matching values are set to 1.0
-                # Others are set to NaN
-                [df['val'] == match_val],
-                [1.0],
-                default=np.nan,
-            ), index=df.index).ffill(
-                # Forward fill so that all entries on or after the first
-                # match are set to 1.0, not NaN
-            ).isna(),  # Convert NaN/1.0 to True/False
-            # Take the original value, except where 'keep' is False,
-            # where the value is replaced with NaN.
-            new_val=lambda df: df['val'].where(df['keep'], np.nan)
-        )['new_val']
-    return res
-
-
-def trim_na_cols(df):  # pylint: disable=invalid-name
-    """
-    Remove any columns on the right of a DataFrame `df` which have all missing
-    values up to the first column with at least one non-missing value.
-    """
-    keep_col = df.isna().mean(
-        # Get proportion of each column that is missing.
-        # Columns with all missing values will have 1.0 proportion missing.
-    ).to_frame('prop_missing').assign(
-        keep=lambda df: pd.Series(np.select(
-            # All columns with at least one non-missing value are set to 1.0
-            # Others are set to NaN
-            [df['prop_missing'] < 1.],
-            [1.0],
-            default=np.nan,
-        ), index=df.index).bfill(
-            # Backward fill so that all columns on or before the last
-            # column with at least one non-missing value are set to 1.0
-        ).notna()  # Convert 1.0/NaN to True/False
-    )['keep']
-    return(df.loc[:, keep_col])
-
-
-def remove_unwanted_values(df_raw):
-    """
-    Set unwanted values to NaN, remove surplus columns
-    (with all missing values) from the right, and re-cast
-    columns to numeric if possible.
-
-    Returns: Adjusted DataFrame
-    """
-    df_trimmed = df_raw.apply(
-        set_na_after_val, match_val=RAW_STRUCT['stop_row_at'], axis=1
-    ).pipe(trim_na_cols).apply(pd.to_numeric, errors='ignore')
+        with io.StringIO('\n'.join(in_lines_trunc_df[0])) as in_lines_trunc_stream:
+            df_trimmed = pd.read_csv(
+                in_lines_trunc_stream, header=None, index_col=0, sep=INPUT_SEPARATOR,
+                names=range(in_lines_trunc_df[0].str.count(INPUT_SEPARATOR).max() + 1),
+            ).rename_axis(index=ROW_ID_NAME)
     return df_trimmed
 
 
 def validate_trimmed_data(df_trimmed):
-    """Checks on the trimmed data"""
-    # Check it is as expected
+    """Checks on the loaded, trimmed data"""
+    # Check it is as expected and not malformed
+    if not df_trimmed.index.is_unique:
+        warnings.warn(
+            f"Trimmed data: Row identifiers '{ROW_ID_NAME}' are not unique. "
+            "This may lead to unexpected results."
+        )
     if not (
         # At least the stem columns and one factor set column
         df_trimmed.shape[1] >=
@@ -271,7 +231,9 @@ def get_factor_sets(df_trimmed):
     """Concatenate the columns in the raw data that consist of the factor sets"""
     df_fsets = pd.concat([
         # For each of the factor sets of columns
-        df_trimmed.iloc[  # Select the columns
+        df_trimmed.loc[  # Filter to only the valid rows
+            df_trimmed[1].isin(RAW_STRUCT['f_set']['include_Test_Status'])
+        ].iloc[  # Select the columns
             :, fset_start_col:(fset_start_col + RAW_STRUCT['f_set']['ncols'])
         ].dropna(  # Remove rows that have all missing values
             how="all"
@@ -282,7 +244,9 @@ def get_factor_sets(df_trimmed):
         for fset_start_col in range(
             RAW_STRUCT['stem']['ncols'], df_trimmed.shape[1], RAW_STRUCT['f_set']['ncols']
         )
-    ], sort=False).reset_index(drop=True)  # Best practice to ensure a unique index
+    ], sort=False).apply(  # Where possible, convert object columns to numeric dtype
+        pd.to_numeric, errors='ignore'
+    ).reset_index(drop=True)  # Best practice to ensure a unique index
     return df_fsets
 
 
@@ -389,9 +353,10 @@ def get_all_factor_relativities(
     pf_sep: Seperator for Peril_Factor column names in output
     """
     # Set defaults
-    include_factors = None
     if include_factors is None:
         include_factors = []
+    if isinstance(include_factors, str):
+        include_factors = [include_factors]
 
     df_factors = df_fsets_split.query(
         # Get only the Factor rows
@@ -457,10 +422,7 @@ def join_stem_to_base_factors(df_stem, df_base_factors):
 
 def save_to_csv(df_formatted, out_filepath, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """Save DataFrame to specified output location"""
-    df_formatted.to_csv(
-        out_filepath,
-        sep=file_delimiter, index=True
-    )
+    df_formatted.to_csv(out_filepath, sep=file_delimiter, index=True)
     return True
 
 
@@ -468,7 +430,7 @@ def save_to_csv(df_formatted, out_filepath, file_delimiter=OUTPUT_DEFAULTS['file
 # Pipeline functions #
 ######################
 def convert_df(
-    df_raw,
+    df_trimmed,
     include_factors=None,
     pf_sep=OUTPUT_DEFAULTS['pf_sep'],
     with_validation=True,
@@ -482,12 +444,7 @@ def convert_df(
     with_validation: Set to False to stop optional validation checks from
         running (which might make this function run a little faster).
     """
-    # Validate raw data
-    if with_validation:
-        validate_raw_data(df_raw)
-
-    # Remove unwanted values and resulting empty columns
-    df_trimmed = remove_unwanted_values(df_raw)
+    # Validate trimmed data
     if with_validation:
         validate_trimmed_data(df_trimmed)
 
@@ -520,26 +477,29 @@ def convert_df(
     return df_formatted
 
 
-def convert(
+def convert(  # pylint: disable=too-many-arguments
     in_filepath,
     out_filepath,
-    force_overwrite=False,
     nrows=None,
     file_delimiter=OUTPUT_DEFAULTS['file_delimiter'],
+    verbose=True,
+    *,
+    force_overwrite=False,
     **kwargs,
 ):
     """
     Load raw data, convert to specified format, and save result
 
-    in_filepath: Path to file containing a sheet with the raw data
+    in_filepath: Path to file containing the input data
     out_filepath: Path of a file to save the formatted data
-        If it does not exist, a new workbook will be created.
+        If it does not exist, a new file will be created.
         The directory must already exist.
-
-    file_delimiter: Seperator for values in the input and output files
-    force_overwrite: Set to True if you want to overwrite an existing file
-
     nrows: Maximum number of rows to read
+        If None (default), then attempt to read all rows.
+    file_delimiter: Seperator character for columns in the output file
+        Default is a comma ",".
+    verbose: Whether to show progress messages
+    force_overwrite: Set to True if you want to overwrite an existing file
     **kwargs: Other arguments to pass to convert_df
 
     Returns: out_filepath, if it completes successfully
@@ -548,21 +508,37 @@ def convert(
     in_filepath = Path(in_filepath)
     out_filepath = Path(out_filepath)
 
-    # Validate function inputs
+    verbose_step = 0
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tValidate filepath arguments")
     validate_input_options(in_filepath)
     validate_output_options(out_filepath, force_overwrite=force_overwrite)
 
     # Load raw data
-    df_raw = read_raw_data(in_filepath, nrows, file_delimiter)
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tLoad and truncate input file lines")
+    in_lines_trunc_df = read_input_lines(in_filepath, nrows)
+    validate_input_lines_trunc(in_lines_trunc_df)
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tSplit lines into a DataFrame")
+    df_trimmed = split_lines_to_df(in_lines_trunc_df)
 
     # Get converted DataFrame
-    df_formatted = convert_df(df_raw, **kwargs)
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tReshape DataFrame into desired format")
+    df_formatted = convert_df(df_trimmed, **kwargs)
 
     # Save results to a workbook
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tSave resulting data format")
     if save_to_csv(df_formatted, out_filepath, file_delimiter):
-        print(
-            f"Output saved here:\t{out_filepath.absolute()}"
-        )
+        if verbose:
+            print(f"Output saved here: {out_filepath.absolute()}")
 
     return out_filepath
 
@@ -643,14 +619,14 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
     help='Maximum number of rows to read.',
 )
 @click.option(
-    '--sep', '-s', 'file_delimiter',
-    type=str, default=OUTPUT_DEFAULTS["file_delimiter"], show_default=True,
-    help='Separator for in and out files.',
-)
-@click.option(
     '--no_checks', '-n', 'no_checks',
     is_flag=True,
     help='Stop optional validation checks from running.',
+)
+@click.option(
+    '--hide_progress', '-p', 'hide_progress',
+    is_flag=True,
+    help='Do not show progress messages.',
 )
 def cli(  # pylint: disable=too-many-arguments
     in_filepath,
@@ -658,8 +634,8 @@ def cli(  # pylint: disable=too-many-arguments
     # Default values for these arguments are given above
     force_overwrite,
     nrows,
-    file_delimiter,
     no_checks,
+    hide_progress,
 ):
     """
     Load raw data, convert to specified format, and save result
@@ -667,17 +643,17 @@ def cli(  # pylint: disable=too-many-arguments
     <input filepath>: Path to file containing the raw data
 
     <output filepath>: Path where the resulting file should go.
-    If it does not exist, a new workbook will be created.
+    If it does not exist, a new file will be created.
     The directory must already exist.
     """
     # Pass parameters to convert()
     convert(
         in_filepath=in_filepath,
         out_filepath=out_filepath,
-        force_overwrite=force_overwrite,
         nrows=nrows,
-        file_delimiter=file_delimiter,
         with_validation=not no_checks,
+        verbose=not hide_progress,
+        force_overwrite=force_overwrite,
     )
     return None
 

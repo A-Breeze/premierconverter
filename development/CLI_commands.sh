@@ -10,7 +10,7 @@
 # $ chmod +x development/CLI_commands.sh  
 
 # Ensure the premierconverter package is installed in the current environment
-# (See README.md for installing the development or built versions)
+# (See DEV_README.md for installing the development or built versions)
 # Ensure pyprojroot is installed:
 # pip install pyprojroot==0.2.0 > /dev/null  # Will install if not already available (silently)
 
