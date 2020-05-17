@@ -16,7 +16,7 @@ jupyter:
 # Data Conversion Challenge
 Challenge to automate the conversion of raw data into a specified format of data to make it more usable.
 
-**Important note**: The data used in this notebook has been randomised and all names have been masked so they can be used for training purposes. This notebook is for training purposes only.
+**Important note**: The data used in this notebook has been randomised and all names have been masked so they can be used for training purposes. This notebook is for development purposes only.
 
 This notebook is available in the following locations. These versions are kept in sync *manually* - there should not be discrepancies, but it is possible.
 - On Kaggle: <https://www.kaggle.com/btw78jt/data-conversion-challenge-202004>
@@ -29,7 +29,7 @@ This notebook is available in the following locations. These versions are kept i
 1. [Setup](#Setup): Import packages, Config variables
 1. [Variables](#Variables): Raw data structure, Inputs
 1. [Workflow](#Workflow): Load raw data, Remove unwanted extra values, Stem section, Factor sets, Output to CSV, Load expected output to check it is as expected
-1. [Using the functions](#Using-the-functions)
+1. [Using the functions](#Using-the-functions): Default arguments, Limited rows
 <!-- #endregion -->
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
@@ -63,6 +63,7 @@ if str(Path('.').absolute()) == '/kaggle/working':
 import sys
 import platform
 import os
+import io
 
 # Import external modules
 from IPython import __version__ as IPy_version
@@ -95,10 +96,11 @@ print(f'premierconverter version:\t{PCon.__version__}')
 
 ```python
 # Output exact environment specification, in case it is needed later
-print("Capturing full package environment spec")
-print("(But note that not all these packages are required)")
-!pip freeze > requirements_snapshot.txt
-!jupyter --version > jupyter_versions_snapshot.txt
+if on_kaggle:
+    print("Capturing full package environment spec")
+    print("(But note that not all these packages are required)")
+    !pip freeze > requirements_snapshot.txt
+    !jupyter --version > jupyter_versions_snapshot.txt
 ```
 
 ```python
@@ -121,11 +123,10 @@ print("Correct: All locations are available as expected")
 
 ```python
 # Configuration variables for the expected format and structure of the data
-accepted_file_extensions = ['.csv', '', '.txt']
-input_file_encodings = ['utf-8', 'latin-1', 'ISO-8859-1']
-file_delimiter = ','
+ACCEPTED_FILE_EXTENSIONS = ['.csv', '', '.txt']
+INPUT_FILE_ENCODINGS = ['utf-8', 'latin-1', 'ISO-8859-1']
 
-raw_struct = {
+RAW_STRUCT = {
     'stop_row_at': 'Total Peril Premium',
     'stem': {
         'ncols': 5,
@@ -134,16 +135,23 @@ raw_struct = {
         'col_types': [np.dtype('object'), np.dtype('float')],
     },
     'f_set': {
+        'include_Test_Status': ['Ok'],
         'ncols': 4,
         'col_names': ['Peril_Factor', 'Relativity', 'Premium_increment', 'Premium_cumulative'],
         'col_types': [np.dtype('object')] + [np.dtype('float')] * 3,
     },
     'bp_name': 'Base Premium',
 }
+TRUNC_AFTER_REGEX = r",\s*{}.*".format(RAW_STRUCT['stop_row_at'])
 
 # Output variables, considered to be constants
 # Column name of the row IDs
-row_id_name = "Ref_num"
+ROW_ID_NAME = "Ref_num"
+
+OUTPUT_DEFAULTS = {
+    'pf_sep': ' ',
+    'file_delimiter': ','
+}
 ```
 
 ## Parameters
@@ -156,16 +164,13 @@ if include_factors is None:
 
 # Maximum number of rows to read in
 nrows = None
-
-# Seperator for Peril_Factor column names in output
-pf_sep = ' '
 ```
 
 ```python
 # Input file location
-in_filepath = raw_data_folder_path / 'minimal01_input.csv'
+in_filepath = raw_data_folder_path / 'minimal_input_adj.csv'
 
-# Checks the file exists and is an Excel file
+# Checks the file exists and has a recognised extension
 in_filepath = Path(in_filepath)
 if not in_filepath.is_file():
     raise FileNotFoundError(
@@ -173,12 +178,22 @@ if not in_filepath.is_file():
         f"\n\t'{in_filepath.absolute()}'"
         "\n\tCannot read the input data"
     )
-if not in_filepath.suffix.lower() in accepted_file_extensions:
+if not in_filepath.suffix.lower() in ACCEPTED_FILE_EXTENSIONS:
     warnings.warn(
         f"in_filepath: The input file extension '{in_filepath.suffix}' "
-        f"is not one of the recognised file extensions {accepted_file_extensions}"
+        f"is not one of the recognised file extensions {ACCEPTED_FILE_EXTENSIONS}"
     )
 print("Correct: Input file exists and has a recognised extension")
+```
+
+```python
+# View the first n raw CSV lines (without loading into a DataFrame)
+nlines = 4
+lines = []
+with in_filepath.open() as f: 
+    for line_num in range(nlines):
+        lines.append(f.readline())
+print(''.join(lines))
 ```
 
 ```python
@@ -203,10 +218,10 @@ if out_filepath.is_file() and not force_overwrite:
         "\n\tIf you want to overwrite it, re-run with `force_overwrite = True`"
     )
 else:
-    if not out_filepath.suffix in accepted_file_extensions:
+    if not out_filepath.suffix in ACCEPTED_FILE_EXTENSIONS:
         warnings.warn(
             f"out_filepath: The output file extension '{out_filepath.suffix}' "
-            f"is not one of the recognised file extensions {accepted_file_extensions}",
+            f"is not one of the recognised file extensions {ACCEPTED_FILE_EXTENSIONS}",
         )
 
 print("Correct: A suitable location for output has been chosen")
@@ -220,130 +235,82 @@ print("Correct: A suitable location for output has been chosen")
 ## Load raw data
 
 ```python
-df_raw = None
-for encoding in input_file_encodings:
+# Load the CSV lines truncated as required
+in_lines_trunc_df = None
+for encoding in INPUT_FILE_ENCODINGS:
     try:
-        df_raw = pd.read_csv(
-            in_filepath,
-            header=None, index_col=0, nrows=nrows,
-            sep=file_delimiter, encoding=encoding
-        ).rename_axis(index=row_id_name)
+        in_lines_trunc_df = pd.read_csv(
+            in_filepath, header=None, index_col=False,
+            nrows=nrows, sep=TRUNC_AFTER_REGEX,
+            engine='python', encoding=encoding,
+        )
         # print(f"'{encoding}': Success")  # Used for debugging only
         break
     except UnicodeDecodeError:
         # print(f"'{encoding}': Fail")  # Used for debugging only
         pass
-if df_raw is None:
+if in_lines_trunc_df is None:
     raise IOError(
-        "\n\tread_raw_data: pandas.read_csv() failed."
-        f"\n\tFile cannot be read with any of the encodings: {input_file_encodings}"
+        "\n\tread_input_lines: pandas.read_csv() failed."
+        f"\n\tFile cannot be read with any of the encodings: {INPUT_FILE_ENCODINGS}"
     )
 
-df_raw.head()
+in_lines_trunc_df.head()
 ```
 
 ```python
-# Check it is not malformed
-if df_raw.shape[1] == 0:
+# Check it worked and is not malformed
+if in_lines_trunc_df.shape[0] <= 1:
     warnings.warn(
-        "Raw data: No columns of data have been read. "
-        "Are you sure you have specified the correct file? "
-        f"Are values seperated by the character '{file_delimiter}'?"
-    )
-if df_raw.shape[0] <= 1:
-    warnings.warn(
-        "Raw data: Only one row of data has been read. "
+        "Raw data lines: Only one row of data has been read. "
         "Are you sure you have specified the correct file? "
         "Are rows of data split into lines of the file?"
     )
-if not df_raw.index.is_unique:
+if not ((
+    in_lines_trunc_df.shape[1] == 1
+) or (
+    in_lines_trunc_df.iloc[:, 1].isna().sum() == in_lines_trunc_df.shape[0]
+)):
     warnings.warn(
-        f"Raw data: Row identifiers '{row_id_name}' are not unique. "
-        "This may lead to unexpected results."
+        "Raw data lines: A line in the input data has more than one match "
+        f"to the regex pattern \"{TRUNC_AFTER_REGEX}\". "
+        "Are you sure you have specified the correct file?"
     )
 ```
 
-## Remove unwanted extra values
-
 ```python
-def set_na_after_val(row_sers, match_val):
-    """
-    Return a copy of `row_sers` with values on or after the 
-    first instance of `match_val` set to NaN (i.e. missing).
-    
-    row_sers: Series to look through
-    match_val: Scalar to find. If no occurrences are found, 
-        return a copy of the original Serires.
-    """
-    res = row_sers.to_frame('val').assign(
-        keep=lambda df: pd.Series(np.select(
-            # All matching values are set to 1.0
-            # Others are set to NaN
-            [df['val'] == match_val],
-            [1.0],
-            default=np.nan,
-        ), index=df.index).ffill(
-            # Forward fill so that all entries on or after the first
-            # match are set to 1.0, not NaN
-        ).isna(),  # Convert NaN/1.0 to True/False
-        # Take the original value, except where 'keep' is False,
-        # where the value is replaced with NaN.
-        new_val=lambda df: df['val'].where(df['keep'], np.nan)
-    )['new_val']
-    return(res)
-```
-
-```python
-def trim_na_cols(df):
-    """
-    Remove any columns on the right of a DataFrame `df` which have all missing 
-    values up to the first column with at least one non-missing value.
-    """
-    keep_col = df.isna().mean(
-        # Get proportion of each column that is missing.
-        # Columns with all missing values will have 1.0 proportion missing.
-    ).to_frame('prop_missing').assign(
-        keep=lambda df: pd.Series(np.select(
-            # All columns with at least one non-missing value are set to 1.0
-            # Others are set to NaN
-            [df['prop_missing'] < 1.],
-            [1.0],
-            default=np.nan,
-        ), index=df.index).bfill(
-            # Backward fill so that all columns on or before the last
-            # column with at least one non-missing value are set to 1.0
-        ).notna()  # Convert 1.0/NaN to True/False
-    )['keep']
-    return(df.loc[:, keep_col])
-```
-
-```python
-# Set unwanted values to NaN
-# and remove surplus columns (with all missing values) from the right.
-# Re-cast columns to numeric if possible.
-df_trimmed = df_raw.apply(
-    set_na_after_val, match_val=raw_struct['stop_row_at'], axis=1
-).pipe(trim_na_cols).apply(pd.to_numeric, errors='ignore')
+# Convert to DataFrame
+with io.StringIO('\n'.join(in_lines_trunc_df[0])) as in_lines_trunc_stream:
+    df_trimmed = pd.read_csv(
+        in_lines_trunc_stream, header=None, index_col=0,
+        names=range(in_lines_trunc_df[0].str.count(",").max() + 1)
+    ).rename_axis(index=PCon.ROW_ID_NAME)
 
 df_trimmed.head()
 ```
 
 ```python
-# Check it is as expected
+# Check it is as expected and not malformed
+if not df_trimmed.index.is_unique:
+    warnings.warn(
+        f"Trimmed data: Row identifiers '{ROW_ID_NAME}' are not unique. "
+        "This may lead to unexpected results."
+    )
 if not (
     # At least the stem columns and one factor set column
     df_trimmed.shape[1] >= 
-    raw_struct['stem']['ncols'] + 1 * raw_struct['f_set']['ncols']
+    RAW_STRUCT['stem']['ncols'] + 1 * RAW_STRUCT['f_set']['ncols']
 ) or not (
     # Stem columns plus a multiple of factor set columns
-    (df_trimmed.shape[1] - raw_struct['stem']['ncols']) 
-    % raw_struct['f_set']['ncols'] == 0
+    (df_trimmed.shape[1] - RAW_STRUCT['stem']['ncols']) 
+    % RAW_STRUCT['f_set']['ncols'] == 0
 ):
     warnings.warn(
-        f"Trimmed data: Incorrect number of columns with relevant data: {df_trimmed.shape[1] + 1}"
+        "Trimmed data: Incorrect number of columns with relevant data: "
+        f"{df_trimmed.shape[1] + 1}"
         "\n\tThere should be: 1 for index, "
-        f"{raw_struct['stem']['ncols']} for stem section, "
-        f"and by a multiple of {raw_struct['f_set']['ncols']} for factor sets"
+        f"{RAW_STRUCT['stem']['ncols']} for stem section, "
+        f"and by a multiple of {RAW_STRUCT['f_set']['ncols']} for factor sets"
     )
 ```
 
@@ -352,11 +319,11 @@ if not (
 ```python
 # Get the stem section of columns
 df_stem = df_trimmed.iloc[
-    :, raw_struct['stem']['chosen_cols']
+    :, RAW_STRUCT['stem']['chosen_cols']
 ].pipe(  # Rename the columns
     lambda df: df.rename(columns=dict(zip(
         df.columns, 
-        raw_struct['stem']['col_names']
+        RAW_STRUCT['stem']['col_names']
     )))
 )
 
@@ -366,11 +333,11 @@ df_stem.head()
 ```python
 # Checks
 if not (
-    df_stem.dtypes == raw_struct['stem']['col_types']
+    df_stem.dtypes == RAW_STRUCT['stem']['col_types']
 ).all():
     warnings.warn(
         "Stem columns: Unexpected column data types"
-        f"\n\tExepcted: {raw_struct['stem']['col_types']}"
+        f"\n\tExepcted: {RAW_STRUCT['stem']['col_types']}"
         f"\n\tActual:   {df_stem.dtypes.tolist()}"
     )
 ```
@@ -381,18 +348,22 @@ if not (
 # Combine the rest of the DataFrame into one
 df_fsets = pd.concat([
     # For each of the factor sets of columns
-    df_trimmed.iloc[  # Select the columns
-        :, fset_start_col:(fset_start_col + raw_struct['f_set']['ncols'])
+    df_trimmed.loc[  # Filter to only the valid rows
+        df_trimmed[1].isin(RAW_STRUCT['f_set']['include_Test_Status'])
+    ].iloc[  # Select the columns
+        :, fset_start_col:(fset_start_col + RAW_STRUCT['f_set']['ncols'])
     ].dropna(  # Remove rows that have all missing values
         how="all"
     ).pipe(lambda df: df.rename(columns=dict(zip(  # Rename columns
-        df.columns, raw_struct['f_set']['col_names']
+        df.columns, RAW_STRUCT['f_set']['col_names']
     )))).reset_index()  # Get row_ID as a column
 
     for fset_start_col in range(
-        raw_struct['stem']['ncols'], df_trimmed.shape[1], raw_struct['f_set']['ncols']
+        RAW_STRUCT['stem']['ncols'], df_trimmed.shape[1], RAW_STRUCT['f_set']['ncols']
     )
-], sort=False).reset_index(drop=True)  # Best practice to ensure a unique index
+], sort=False).apply(  # Where possible, convert object columns to numeric dtype
+    pd.to_numeric, errors='ignore'
+).reset_index(drop=True)  # Best practice to ensure a unique index
 
 df_fsets.head()
 ```
@@ -400,23 +371,23 @@ df_fsets.head()
 ```python
 # Checks
 if not (
-    df_fsets[raw_struct['f_set']['col_names']].dtypes == 
-    raw_struct['f_set']['col_types']
+    df_fsets[RAW_STRUCT['f_set']['col_names']].dtypes == 
+    RAW_STRUCT['f_set']['col_types']
 ).all():
     warnings.warn(
         "Factor sets columns: Unexpected column data types"
-        f"\n\tExpected: {raw_struct['f_set']['col_types']}"
-        f"\n\tActual:   {df_fsets[raw_struct['f_set']['col_names']].dtypes.tolist()}"
+        f"\n\tExpected: {RAW_STRUCT['f_set']['col_types']}"
+        f"\n\tActual:   {df_fsets[RAW_STRUCT['f_set']['col_names']].dtypes.tolist()}"
     )
 ```
 
 ```python
 perils_implied = df_fsets.Peril_Factor.drop_duplicates(  # Get only unique 'Peril_Factor' combinations
 ).to_frame().pipe(lambda df: df.loc[  # Filter to leave only 'Base Premium' occurences
-    df.Peril_Factor.str.contains(raw_struct['bp_name']), :
+    df.Peril_Factor.str.contains(RAW_STRUCT['bp_name']), :
 ]).assign(
     # Get the 'Peril' part of 'Peril_Factor'
-    Peril=lambda df: df.Peril_Factor.str.replace(raw_struct['bp_name'], "").str.strip()
+    Peril=lambda df: df.Peril_Factor.str.replace(RAW_STRUCT['bp_name'], "").str.strip()
 ).Peril.sort_values().to_list()
 
 perils_implied
@@ -458,14 +429,14 @@ df_fsets_split.head()
 # Get the Base Premiums for all row_IDs and Perils
 df_base_prems = df_fsets_split.query(
     # Get only the Base Preimum rows
-    f"Factor == '{raw_struct['bp_name']}'"
+    f"Factor == '{RAW_STRUCT['bp_name']}'"
 ).assign(
     # Create Peril_Factor combination for column names
-    Peril_Factor=lambda df: df.Peril + pf_sep + df.Factor,
+    Peril_Factor=lambda df: df.Peril + OUTPUT_DEFAULTS['pf_sep'] + df.Factor,
     Custom_order=0,  # Will be used later to ensure desired column order
 ).pivot_table(
     # Pivot to 'Peril_Factor' columns and one row per row_ID
-    index=row_id_name,
+    index=ROW_ID_NAME,
     columns=['Peril', 'Custom_order', 'Peril_Factor'],
     values='Premium_cumulative'
 )
@@ -487,14 +458,14 @@ if df_base_prems.isna().sum().sum() > 0:
 # Get the Relativity for all row_ID, Perils and Factors
 df_factors = df_fsets_split.query(
     # Get only the Factor rows
-    f"Factor != '{raw_struct['bp_name']}'"
+    f"Factor != '{RAW_STRUCT['bp_name']}'"
 ).drop(
     columns=['Premium_increment', 'Premium_cumulative']
 ).set_index(
     # Ensure there is one row for every combination of row_ID, Peril, Factor
-    [row_id_name, 'Peril', 'Factor']
+    [ROW_ID_NAME, 'Peril', 'Factor']
 ).pipe(lambda df: df.reindex(index=pd.MultiIndex.from_product([
-    df.index.get_level_values(row_id_name).unique(),
+    df.index.get_level_values(ROW_ID_NAME).unique(),
     df.index.get_level_values('Peril').unique(),
     # Include additional factors if desired from the inputs
     set(df.index.get_level_values('Factor').tolist() + include_factors),
@@ -503,11 +474,11 @@ df_factors = df_fsets_split.query(
     'Relativity': 1.,
 }).reset_index().assign(
     # Create Peril_Factor combination for column names
-    Peril_Factor=lambda df: df.Peril + pf_sep + df.Factor,
+    Peril_Factor=lambda df: df.Peril + OUTPUT_DEFAULTS['pf_sep'] + df.Factor,
     Custom_order=1
 ).pivot_table(
     # Pivot to 'Peril_Factor' columns and one row per row_ID
-    index=row_id_name,
+    index=ROW_ID_NAME,
     columns=['Peril', 'Custom_order', 'Peril_Factor'],
     values='Relativity'
 )
@@ -557,7 +528,7 @@ df_formatted.iloc[:10,:20]
 # Save it
 df_formatted.to_csv(
     out_filepath,
-    sep=file_delimiter, index=True
+    sep=OUTPUT_DEFAULTS['file_delimiter'], index=True
 )
 print("Output saved")
 ```
@@ -568,7 +539,7 @@ print("Output saved")
 # Check it worked
 df_reload = pd.read_csv(
     out_filepath,
-    index_col=0, sep=file_delimiter
+    index_col=0, sep=OUTPUT_DEFAULTS['file_delimiter'],
 )
 
 df_reload.head()
@@ -588,16 +559,16 @@ print("Correct: The reloaded values are equal, up to floating point tolerance")
 
 ```python
 # Location of sheet of expected results
-expected_filepath = raw_data_folder_path / 'minimal01_expected_output.csv'
+expected_filepath = raw_data_folder_path / 'minimal_expected_output_5.csv'
 ```
 
 ```python
 df_expected = None
-for encoding in input_file_encodings:
+for encoding in INPUT_FILE_ENCODINGS:
     try:
         df_expected = pd.read_csv(
             expected_filepath,
-            index_col=0, sep=file_delimiter,
+            index_col=0, sep=OUTPUT_DEFAULTS['file_delimiter'],
             encoding=encoding
         ).apply(lambda col: (
             col.astype('float') 
@@ -612,7 +583,7 @@ for encoding in input_file_encodings:
 if df_expected is None:
     raise IOError(
         "\n\tload_formatted_file: pandas.read_csv() failed."
-        f"\n\tFile cannot be read with any of the encodings: {input_file_encodings}"
+        f"\n\tFile cannot be read with any of the encodings: {INPUT_FILE_ENCODINGS}"
     )
 
 df_expected.head()
@@ -631,14 +602,14 @@ print("Correct: The reloaded values are equal, up to floating point tolerance")
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
 
 # Using the functions
+## Default arguments
 
 ```python
 help(PCon.convert)
 ```
 
 ```python
-# Run with default arguments
-in_filepath = raw_data_folder_path / 'minimal01_input.csv'
+in_filepath = raw_data_folder_path / 'minimal_input_adj.csv'
 out_filepath = 'formatted_data.csv'
 res_filepath = PCon.convert(in_filepath, out_filepath)
 ```
@@ -646,9 +617,11 @@ res_filepath = PCon.convert(in_filepath, out_filepath)
 ```python
 # Run the pipeline manually to check
 # Load raw data
-df_raw = PCon.read_raw_data(in_filepath)
+in_lines_trunc_df = PCon.read_input_lines(in_filepath)
+PCon.validate_input_lines_trunc(in_lines_trunc_df)
+df_trimmed = PCon.split_lines_to_df(in_lines_trunc_df)
 # Get converted DataFrame
-df_formatted = PCon.convert_df(df_raw)
+df_formatted = PCon.convert_df(df_trimmed)
 
 df_formatted.head()
 ```
@@ -664,11 +637,11 @@ if PCon.formatted_dfs_are_equal(df_formatted, df_reload):
 
 ```python
 # Check against expected output from manually created worksheet
-expected_filepath = raw_data_folder_path / 'minimal01_expected_output.csv'
+expected_filepath = raw_data_folder_path / 'minimal_expected_output_5.csv'
 df_expected = PCon.load_formatted_file(expected_filepath)
 
 # Check it matches expectations
-if PCon.formatted_dfs_are_equal(df_formatted, df_expected):
+if PCon.formatted_dfs_are_equal(df_reload, df_expected):
     print("Correct: The reloaded values are equal, up to floating point tolerance")
 ```
 
@@ -677,5 +650,30 @@ if PCon.formatted_dfs_are_equal(df_formatted, df_expected):
 res_filepath.unlink()
 print("Workspace restored")
 ```
+
+## Limited rows
+
+```python
+nrows = 2  # Choose a specific number for which the expected results have been created: 2, 4 or 5
+in_filepath = raw_data_folder_path / 'minimal_input_adj.csv'
+out_filepath = f'formatted_data_{nrows}.csv'
+res_filepath = PCon.convert(in_filepath, out_filepath, nrows = nrows)
+
+# Check against expected output from manually created worksheet
+expected_filepath = raw_data_folder_path / f'minimal_expected_output_{nrows}.csv'
+df_expected = PCon.load_formatted_file(expected_filepath)
+df_reload = PCon.load_formatted_file(res_filepath)
+
+# Check it matches expectations
+if PCon.formatted_dfs_are_equal(df_reload, df_expected):
+    print("Correct: The reloaded values are equal, up to floating point tolerance")
+
+# Delete the results file
+res_filepath.unlink()
+print("Workspace restored")
+```
+
+Further connotations are tested in the package's automated test suite.
+
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
