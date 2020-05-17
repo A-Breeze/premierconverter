@@ -11,7 +11,7 @@
 # To select which branches to run *all* tasks on push to remote repo
 # (but the 'condition' for each stage / job / step still needs to be met)
 trigger:
-- master
+- var_len_rows
 # To select which branches to run *all* tasks creating a pull request
 # (but the 'condition' for each stage / job / step still needs to be met)
 # pr:
@@ -27,7 +27,7 @@ stages:
   jobs:
   - job: Linux
     # Condition to only run this stage on a specified branch
-    condition: eq(variables['Build.SourceBranchName'], 'branch_name_here')
+    # condition: eq(variables['Build.SourceBranchName'], 'branch_name_here')
     pool:
       vmImage: 'ubuntu-latest'
     strategy:
@@ -54,7 +54,7 @@ stages:
 
 - stage: Build_and_Publish
   # Condition to only run this stage on a specified branch
-  condition: eq(variables['Build.SourceBranchName'], 'branch_name_here')
+  # condition: eq(variables['Build.SourceBranchName'], 'branch_name_here')
 
   # Specify that this job depends on another having already run
   dependsOn: Test
