@@ -551,7 +551,7 @@ def load_formatted_file(out_filepath, file_delimiter=OUTPUT_DEFAULTS['file_delim
     Utility function to load data from output file
 
     *Not* designed to check if there have been any changes since
-    the output sheet was created.
+    the output file was created.
     """
     df_reload = None
     for encoding in INPUT_FILE_ENCODINGS:
@@ -611,7 +611,7 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
 @click.option(
     '--force', 'force_overwrite',
     is_flag=True,
-    help='Overwrite an existing output worksheet.',
+    help='Overwrite an existing output file.',
 )
 @click.option(
     '--nrows', '-r', 'nrows',

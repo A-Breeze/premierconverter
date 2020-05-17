@@ -16,7 +16,7 @@ jupyter:
 # Notes for development of automated tests
 Notebook for considering what automated tests the project should implement. The actual tests that are implemented can be found in the `tests/` project folder.
 
-**Important note**: No spreadsheet data is used in the automated tests. Any "data" used in this repo is entirely dummy data, i.e. it has been randomised and all names have been masked so they can be used for training purposes. This notebook is for training purposes only.
+**Important note**: No data files are committed to this repo, including for use in the automated tests. Any "data" used in this repo is entirely dummy data, i.e. it has been randomised and all names have been masked so they can be used for training purposes. This notebook is for training purposes only.
 <!-- #endregion -->
 
 <!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->
