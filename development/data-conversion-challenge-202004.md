@@ -20,7 +20,7 @@ Challenge to automate the conversion of raw data into a specified format of data
 
 This notebook is available in the following locations. These versions are kept in sync *manually* - there should not be discrepancies, but it is possible.
 - On Kaggle: <https://www.kaggle.com/btw78jt/data-conversion-challenge-202004>
-- In the GitHub project repo: <https://github.com/A-Breeze/premierconverter>. See the `README.md` for further instructions, and the associated `simulate_dummy_data.md` notebook to generate the dummy data that is used for this notebook.
+- In the GitHub project repo: <https://github.com/A-Breeze/premierconverter>. See the `README.md` for further instructions, and the associated `simulate_dummy_data` notebook to generate the dummy data that is used for this notebook.
 <!-- #endregion -->
 
 <!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->

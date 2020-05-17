@@ -1,39 +1,37 @@
----
-jupyter:
-  jupytext:
-    text_representation:
-      extension: .md
-      format_name: markdown
-      format_version: '1.2'
-      jupytext_version: 1.4.2
-  kernelspec:
-    display_name: Python 3
-    language: python
-    name: python3
----
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.4.2
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
 
-<!-- #region _cell_guid="b1076dfc-b9ad-4769-8c92-a6c4dae69d19" _uuid="8f2839f25d086af736a60e9eeb907d3b93b6e0e5" -->
-# Simulate dummy data
-Code to generate some dummy data that can be used for development and tests.
+# + [markdown] _cell_guid="b1076dfc-b9ad-4769-8c92-a6c4dae69d19" _uuid="8f2839f25d086af736a60e9eeb907d3b93b6e0e5"
+# # Simulate dummy data
+# Code to generate some dummy data that can be used for development and tests.
+#
+# **Important note**: No data files are committed to this repo. Any "data" used in this repo is entirely dummy data, i.e. it has been randomised and all names have been masked so they can be used for training purposes. This notebook is for training purposes only.
 
-**Important note**: No data files are committed to this repo. Any "data" used in this repo is entirely dummy data, i.e. it has been randomised and all names have been masked so they can be used for training purposes. This notebook is for training purposes only.
-<!-- #endregion -->
+# + [markdown] _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a"
+# <!-- This table of contents is updated *manually* -->
+# # Contents
+# 1. [Setup](#Setup): Import packages, Configuration variables
+# 1. [Typical workflow](#Typical-workflow)
+# 1. [Manual specifications](#Manual-specifications)
+# 1. [Automated generate function](#Automated-generate-function)
+# 1. [Generated dummy data](#Generated-dummy-data)
+# -
 
-<!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->
-<!-- This table of contents is updated *manually* -->
-# Contents
-1. [Setup](#Setup): Import packages, Configuration variables
-1. [Typical workflow](#Typical-workflow)
-1. [Manual specifications](#Manual-specifications)
-1. [Automated generate function](#Automated-generate-function)
-1. [Generated dummy data](#Generated-dummy-data)
-<!-- #endregion -->
+# <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+#
+# # Setup
 
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
-
-# Setup
-
-```python
 # Set warning messages
 import warnings
 # Show all warnings in IPython
@@ -41,9 +39,8 @@ warnings.filterwarnings('always')
 # Ignore specific numpy warnings (as per <https://github.com/numpy/numpy/issues/11788#issuecomment-422846396>)
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
-```
 
-```python
+# +
 # Import built-in modules
 import sys
 import platform
@@ -73,31 +70,29 @@ assert np.__version__ == '1.18.2'
 print(f'numpy version:\t\t\t{np.__version__}')
 assert pd.__version__ == '0.25.3'
 print(f'pandas version:\t\t\t{pd.__version__}')
-```
+# -
 
-```python
 # Configuration variables
 raw_data_folder_path = proj_config.example_data_dir_path
 assert raw_data_folder_path.is_dir()
 print("Correct: All locations are available as expected")
-```
-
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
-
-# Typical workflow
-Define some minimal, dummy data that can be used for development and unit tests. Specifically, we define some `in_row_sers`, each of which is a Series representation of the row in the input data, i.e. it includes the *whole* row (not just the truncated version that will be read in). From this we can create:
-- The input data CSV, saved at a specified location.
-- The DataFrame `df_raw` that we expect will be the result of loading the input CSV (i.e. after truncation).
-- The expected DataFrame result of the conversion. We specify this in an ad hoc way, and use it to check the actual result of the conversion is as expected. There may be various outputs, depending on which of the `in_row_sers` are used and in what order.
 
 
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+# <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+#
+# # Typical workflow
+# Define some minimal, dummy data that can be used for development and unit tests. Specifically, we define some `in_row_sers`, each of which is a Series representation of the row in the input data, i.e. it includes the *whole* row (not just the truncated version that will be read in). From this we can create:
+# - The input data CSV, saved at a specified location.
+# - The DataFrame `df_raw` that we expect will be the result of loading the input CSV (i.e. after truncation).
+# - The expected DataFrame result of the conversion. We specify this in an ad hoc way, and use it to check the actual result of the conversion is as expected. There may be various outputs, depending on which of the `in_row_sers` are used and in what order.
 
-# Manual specifications
-## Variables and utility functions
-We put these in a simple class, so they can be accessed with the same syntax that will be used once they are incorporated into the package.
+# <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+#
+# # Manual specifications
+# ## Variables and utility functions
+# We put these in a simple class, so they can be accessed with the same syntax that will be used once they are incorporated into the package.
 
-```python
+# +
 class premierconverter:
     """Class to hold constants that will actually form part of the package module"""
     def __init__(self):
@@ -126,20 +121,21 @@ class premierconverter:
 
 # Get an object for use in the rest of the script
 PCon = premierconverter()
-```
 
-```python
+
+# -
+
 # Utility functions
 def add_one_to_index(df):
     """Add 1 to the index values of a Series of DataFrame"""
     df.index += 1
     return df
-```
 
-## `in_row_sers`
-Typical raw rows as Series
 
-```python
+# ## `in_row_sers`
+# Typical raw rows as Series
+
+# +
 # Usual data rows
 in_row_sers_01 = pd.Series([
     'Ok', 96.95, np.nan, np.nan, 9,
@@ -176,11 +172,11 @@ in_row_sers_declined = pd.Series([
     'Declined', np.nan, np.nan, np.nan, 4,
     'Some more text on a declined row', 'even, more. text', np.nan, 0, 0,
 ]).pipe(add_one_to_index)
-```
+# -
 
-## Expected results from conversion
+# ## Expected results from conversion
 
-```python
+# +
 # Set up and utilty function
 df_expected_tests = dict()
 
@@ -193,9 +189,9 @@ def get_output_col_names(perils, factors):
              [perils, [PCon.RAW_STRUCT['bp_name']] + factors]
          )]
     )
-```
 
-```python
+
+# +
 # Output from 4 rows
 df_expected_tests[4] = pd.DataFrame(
     columns=get_output_col_names(
@@ -244,14 +240,15 @@ df_expected_tests['2_all_facts'] = pd.DataFrame(
          in_row_sers_02[[5+4*3+2, 5+4*3]].to_list() + [1.] * 3),
     ],
 ).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
-```
 
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
 
-# Automated generate function
-## Generate input CSVs
+# -
 
-```python
+# <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+#
+# # Automated generate function
+# ## Generate input CSVs
+
 def simulate_row_str(row_id, in_row_sers):
     """
     Convert an `in_row_sers` into a string that looks like an input file row.
@@ -263,9 +260,8 @@ def simulate_row_str(row_id, in_row_sers):
             header=False, index=False, line_terminator="\n"
         )
     )
-```
 
-```python
+
 def generate_input_data_csv(input_rows_lst, in_filepath=None, *, force_overwrite=False):
     """
     Creates the input CSV from a list of input rows at `in_filepath`.
@@ -287,22 +283,18 @@ def generate_input_data_csv(input_rows_lst, in_filepath=None, *, force_overwrite
         return None
     in_filepath.write_text(infile_str)
     return None
-```
 
-```python
+
 # Try it out
 input_rows_lst = [in_row_sers_declined, in_row_sers_03]  # Choose in_row_sers to use
 print(generate_input_data_csv(input_rows_lst))
-```
 
-## Read the input CSV
+# ## Read the input CSV
 
-```python
 # Choose in_row_sers to use in this example
 input_rows_lst = [in_row_sers_declined, in_row_sers_03]
-```
 
-```python
+# +
 # Read the input CSV truncated at the specified regex
 # and correctly load it as a DataFrame
 with io.StringIO(generate_input_data_csv(input_rows_lst)) as in_filepath:
@@ -324,11 +316,12 @@ with io.StringIO('\n'.join(in_lines_trunc_df[0])) as in_lines_trunc_stream:
         names=range(in_lines_trunc_df[0].str.count(",").max() + 1)
     ).rename_axis(index=PCon.ROW_ID_NAME)
 df_raw.head()
-```
 
-## Check it is as expected
 
-```python
+# -
+
+# ## Check it is as expected
+
 def set_na_after_val(row_sers, match_val):
     """
     Return a copy of `row_sers` with values on or after the 
@@ -354,9 +347,8 @@ def set_na_after_val(row_sers, match_val):
         new_val=lambda df: df['val'].where(df['keep'], np.nan)
     )['new_val']
     return(res)
-```
 
-```python
+
 def trim_na_cols(df):
     """
     Remove any columns on the right of a DataFrame `df` which have all missing 
@@ -378,9 +370,9 @@ def trim_na_cols(df):
         ).notna()  # Convert 1.0/NaN to True/False
     )['keep']
     return(df.loc[:, keep_col])
-```
 
-```python
+
+# +
 # Set unwanted values to NaN
 # and remove surplus columns (with all missing values) from the right.
 # Re-cast columns to numeric if possible.
@@ -389,9 +381,8 @@ df_raw_expected = pd.DataFrame(input_rows_lst).pipe(add_one_to_index).apply(
 ).pipe(trim_na_cols).apply(pd.to_numeric, errors='ignore')
 
 df_raw_expected.head()
-```
+# -
 
-```python
 assert (df_raw_expected.dtypes == df_raw.dtypes).all()
 assert df_raw_expected.shape == df_raw.shape
 assert (df_raw_expected.isna() == df_raw.isna()).all().all()
@@ -399,26 +390,21 @@ assert np.max(np.max(np.abs(
     df_raw_expected.select_dtypes(exclude='object') - df_raw.select_dtypes(exclude='object')
 ))) < 1e-15
 print("Correct: Expected df_raw matches loaded df_raw")
-```
 
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+# <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+#
+# # Generated dummy data
+# For use during package development
 
-# Generated dummy data
-For use during package development
-
-```python
 # All dummy rows
 input_rows_lst = [in_row_sers_01, in_row_sers_02, in_row_sers_error, in_row_sers_03, in_row_sers_declined]
 in_filepath = raw_data_folder_path / 'minimal_input_adj.csv'
 generate_input_data_csv(input_rows_lst, in_filepath)
-```
 
-```python
 # Look at the output string
 print(in_filepath.read_text())
-```
 
-```python
+# +
 # Check it worked
 in_lines_trunc_df = pd.read_csv(
     in_filepath, header=None, index_col=False,
@@ -449,12 +435,11 @@ assert np.max(np.max(np.abs(
     df_raw_expected.select_dtypes(exclude='object') - df_raw.select_dtypes(exclude='object')
 ))) < 1e-15
 print("Correct: Expected df_raw matches loaded df_raw")
-```
+# -
 
-## Save expected conversion results
-This is only needed for package development
+# ## Save expected conversion results
+# This is only needed for package development
 
-```python
 force_overwrite = False
 for nrows, df_expected in df_expected_tests.items():
     expected_filepath = raw_data_folder_path / f'minimal_expected_output_{nrows}.csv'
@@ -468,10 +453,8 @@ for nrows, df_expected in df_expected_tests.items():
         continue
     df_expected.to_csv(expected_filepath)
     print(f"File saved here: {expected_filepath}")
-```
 
-## Check it is as expected
-See the main development notebook.
+# ## Check it is as expected
+# See the main development notebook.
 
-
-<div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
+# <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>
