@@ -18,7 +18,6 @@ Contents:
 #########
 # Import built-in modules
 from pathlib import Path
-import io
 import shutil
 
 # Import external modules
@@ -69,7 +68,7 @@ def simulate_row_str(row_id, in_row_sers):
     row_id: The index column value that you want for the row.
     """
     return(
-        str(row_id) + ',"' + in_row_sers[1] + '",' + 
+        str(row_id) + ',"' + in_row_sers[1] + '",' +
         pd.DataFrame([in_row_sers[1:]]).to_csv(
             header=False, index=False, line_terminator="\n"
         )
@@ -118,7 +117,7 @@ def input_rows_lst():
         'Ok', 170.73, np.nan, np.nan, 11,
         'AnotherPrlBase Premium', 0.0, 101.56, 101.56,
         'AnotherPrlFactor1', 1.064887, 6.59, 108.15,
-        'Peril1 Base Premium', 0.0, 100.55, 100.55, 
+        'Peril1 Base Premium', 0.0, 100.55, 100.55,
         'AnotherPrlSomeFact', 0.648875, -37.97, 70.18,
         'Total Peril Premium', 2, 'extra text and figures',
     ]).pipe(add_one_to_index)
@@ -165,12 +164,12 @@ def df_expected_tests(input_rows_lst):
             factors=['Factor1', 'NewFact', 'SomeFact']
         ),
         data=[
-            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 3 + 
+            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 3 +
             in_row_sers_01[[5+4*1, 5+4*2+2]].to_list() + [1.] * 2),
-            (in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2]].to_list() + [1.] + 
+            (in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2]].to_list() + [1.] +
             in_row_sers_02[[5+4*3+2, 5+4*3]].to_list() + [1.] * 3),
             in_row_sers_error[[1]].to_list() + [0.] * 9,
-            (in_row_sers_03[[1, 2, 5+4*4]].to_list() + [1.] * 3 + 
+            (in_row_sers_03[[1, 2, 5+4*4]].to_list() + [1.] * 3 +
             in_row_sers_03[[5+4*5, 5+4*1+2, 5+2]].to_list() + [1.])
         ],
     ).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
@@ -187,7 +186,7 @@ def df_expected_tests(input_rows_lst):
             factors=['Factor1', 'SomeFact']
         ),
         data=[
-            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 2 + 
+            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 2 +
             in_row_sers_01[[5+4*1, 5+4*2+2]].to_list() + [1.]),
             in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2, 5+4*3+2, 5+4*3]].to_list() + [1.] * 2,
         ],
@@ -200,7 +199,7 @@ def df_expected_tests(input_rows_lst):
             factors=['Factor1', 'NewFact', 'SomeFact']
         ),
         data=[
-            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 3 + 
+            (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 3 +
             in_row_sers_01[[5+4*1, 5+4*2+2]].to_list() + [1.] * 2),
             (in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2]].to_list() + [1.] +
             in_row_sers_02[[5+4*3+2, 5+4*3]].to_list() + [1.] * 3),

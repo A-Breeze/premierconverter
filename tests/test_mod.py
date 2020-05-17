@@ -1,4 +1,6 @@
 """Integration tests on the Python module"""
+# pylint: disable=bad-continuation, too-many-arguments
+
 #########
 # Setup #
 #########
@@ -75,7 +77,7 @@ def test_mod02_mix_order(
     # Then: Result is as expected
     df_reload_01 = PCon.load_formatted_file(res_filepath)
     assert PCon.formatted_dfs_are_equal(
-        df_reload_01, 
+        df_reload_01,
         df_expected_tests[expected_label].iloc[idx_ordered, :].reset_index(
             drop=True).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
     )

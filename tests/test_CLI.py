@@ -6,12 +6,11 @@
 #########
 # Import external modules
 import pytest
-import pandas as pd
 from click.testing import CliRunner
 
 # Import project modules
 import premierconverter as PCon
-from .conftest import generate_input_data_csv, add_one_to_index
+from .conftest import generate_input_data_csv
 
 ####################
 # Version and help #
@@ -130,7 +129,7 @@ def test_CLI20_force_overwrite(tmp_dir_path, input_rows_lst, df_expected_tests):
     assert result.exit_code == 1
     assert result.exception  # An error was thrown...
     assert isinstance(result.exception, FileExistsError)  # ...of this specific type
-    assert 'File already exists' in str(result.exception)  # The error message contains is helpful...
+    assert 'File already exists' in str(result.exception)  # The error message contains is helpful..
     assert str(out_filepath.absolute()) in str(result.exception)  # ...and contains the filepath
     assert out_filepath.read_text() == out_file_str  # The file contents are unchanged
     print("Correct: File was not overwritten and helpful error message was thrown")
