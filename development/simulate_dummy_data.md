@@ -230,6 +230,20 @@ df_expected_tests[2] = pd.DataFrame(
         in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2, 5+4*3+2, 5+4*3]].to_list() + [1.] * 2,
     ],
 ).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
+
+# Output from 2 rows but including additional factor
+df_expected_tests['2_all_facts'] = pd.DataFrame(
+    columns=get_output_col_names(
+        perils=['AnotherPrl', 'Peril1'],
+        factors=['Factor1', 'NewFact', 'SomeFact']
+    ),
+    data=[
+        (in_row_sers_01[[1, 2, 5+4*2]].to_list() + [1.] * 3 + 
+         in_row_sers_01[[5+4*1, 5+4*2+2]].to_list() + [1.] * 2),
+        (in_row_sers_02[[1, 2, 5+4*1, 5+4*1+2]].to_list() + [1.] +
+         in_row_sers_02[[5+4*3+2, 5+4*3]].to_list() + [1.] * 3),
+    ],
+).pipe(add_one_to_index).rename_axis(index=PCon.ROW_ID_NAME)
 ```
 
 <div align="right" style="text-align: right"><a href="#Contents">Back to Contents</a></div>

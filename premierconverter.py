@@ -21,6 +21,7 @@ import click
 # Configuration variables for the expected format and structure of the data
 ACCEPTED_FILE_EXTENSIONS = ['.csv', '', '.txt']
 INPUT_FILE_ENCODINGS = ['utf-8', 'latin-1', 'ISO-8859-1']
+INPUT_SEPARATOR = ","
 
 RAW_STRUCT = {
     'stop_row_at': 'Total Peril Premium',
@@ -33,6 +34,8 @@ RAW_STRUCT = {
     'f_set': {
         'include_Test_Status': ['Ok'],
         'ncols': 4,
+        # Note: 'Peril_Factor' column name is hard-coded in various locations
+        # so should not be altered by changing the value here.
         'col_names': ['Peril_Factor', 'Relativity', 'Premium_increment', 'Premium_cumulative'],
         'col_types': [np.dtype('object')] + [np.dtype('float')] * 3,
     },
@@ -99,7 +102,7 @@ def validate_output_options(out_filepath, *, force_overwrite=False):
 
 
 def read_input_lines(in_filepath, nrows=None, sep_regex=TRUNC_AFTER_REGEX):
-    """
+    r"""
     Read input CSV lines, with regex separator `sep_regex`.
     It is envisaged that `sep_regex` will be of the form ",\s*<specific term>.*",
     so that each line will be truncated after the first occurrence of <specific term>.
@@ -157,11 +160,17 @@ def split_lines_to_df(in_lines_trunc_df):
     in_lines_trunc_df: Assumes that the relevant column is `0`
     Returns: The resulting DataFrame
     """
-    with io.StringIO('\n'.join(in_lines_trunc_df[0])) as in_lines_trunc_stream:
-        df_trimmed = pd.read_csv(
-            in_lines_trunc_stream, header=None, index_col=0,
-            names=range(in_lines_trunc_df[0].str.count(",").max() + 1)
-        ).rename_axis(index=ROW_ID_NAME)
+    with warnings.catch_warnings():
+        # Ignore dtype warnings at this point, because we check them later on (after casting)
+        warnings.filterwarnings(
+            "ignore", message='.*Specify dtype option on import or set low_memory=False',
+            category=pd.errors.DtypeWarning,
+        )
+        with io.StringIO('\n'.join(in_lines_trunc_df[0])) as in_lines_trunc_stream:
+            df_trimmed = pd.read_csv(
+                in_lines_trunc_stream, header=None, index_col=0, sep=INPUT_SEPARATOR,
+                names=range(in_lines_trunc_df[0].str.count(INPUT_SEPARATOR).max() + 1),
+            ).rename_axis(index=ROW_ID_NAME)
     return df_trimmed
 
 
@@ -344,7 +353,6 @@ def get_all_factor_relativities(
     pf_sep: Seperator for Peril_Factor column names in output
     """
     # Set defaults
-    include_factors = None
     if include_factors is None:
         include_factors = []
 
@@ -412,10 +420,7 @@ def join_stem_to_base_factors(df_stem, df_base_factors):
 
 def save_to_csv(df_formatted, out_filepath, file_delimiter=OUTPUT_DEFAULTS['file_delimiter']):
     """Save DataFrame to specified output location"""
-    df_formatted.to_csv(
-        out_filepath,
-        sep=file_delimiter, index=True
-    )
+    df_formatted.to_csv(out_filepath, sep=file_delimiter, index=True)
     return True
 
 
@@ -470,26 +475,29 @@ def convert_df(
     return df_formatted
 
 
-def convert(
+def convert(  # pylint: disable=too-many-arguments
     in_filepath,
     out_filepath,
-    force_overwrite=False,
     nrows=None,
     file_delimiter=OUTPUT_DEFAULTS['file_delimiter'],
+    verbose=True,
+    *,
+    force_overwrite=False,
     **kwargs,
 ):
     """
     Load raw data, convert to specified format, and save result
 
-    in_filepath: Path to file containing a sheet with the raw data
+    in_filepath: Path to file containing the input data
     out_filepath: Path of a file to save the formatted data
-        If it does not exist, a new workbook will be created.
+        If it does not exist, a new file will be created.
         The directory must already exist.
-
-    file_delimiter: Seperator for values in the input and output files
-    force_overwrite: Set to True if you want to overwrite an existing file
-
     nrows: Maximum number of rows to read
+        If None (default), then attempt to read all rows.
+    file_delimiter: Seperator character for columns in the output file
+        Default is a comma ",".
+    verbose: Whether to show progress messages
+    force_overwrite: Set to True if you want to overwrite an existing file
     **kwargs: Other arguments to pass to convert_df
 
     Returns: out_filepath, if it completes successfully
@@ -498,23 +506,37 @@ def convert(
     in_filepath = Path(in_filepath)
     out_filepath = Path(out_filepath)
 
-    # Validate function inputs
+    verbose_step = 0
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tValidate filepath arguments")
     validate_input_options(in_filepath)
     validate_output_options(out_filepath, force_overwrite=force_overwrite)
 
     # Load raw data
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tLoad and truncate input file lines")
     in_lines_trunc_df = read_input_lines(in_filepath, nrows)
     validate_input_lines_trunc(in_lines_trunc_df)
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tSplit lines into a DataFrame")
     df_trimmed = split_lines_to_df(in_lines_trunc_df)
 
     # Get converted DataFrame
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tReshape DataFrame into desired format")
     df_formatted = convert_df(df_trimmed, **kwargs)
 
     # Save results to a workbook
+    if verbose:
+        verbose_step += 1
+        print(f"Step {verbose_step}:\tSave resulting data format")
     if save_to_csv(df_formatted, out_filepath, file_delimiter):
-        print(
-            f"Output saved here:\t{out_filepath.absolute()}"
-        )
+        if verbose:
+            print(f"Output saved here: {out_filepath.absolute()}")
 
     return out_filepath
 
@@ -595,14 +617,14 @@ def formatted_dfs_are_equal(df1, df2, tol=1e-10):
     help='Maximum number of rows to read.',
 )
 @click.option(
-    '--sep', '-s', 'file_delimiter',
-    type=str, default=OUTPUT_DEFAULTS["file_delimiter"], show_default=True,
-    help='Separator for in and out files.',
-)
-@click.option(
     '--no_checks', '-n', 'no_checks',
     is_flag=True,
     help='Stop optional validation checks from running.',
+)
+@click.option(
+    '--hide_progress', '-p', 'hide_progress',
+    is_flag=True,
+    help='Do not show progress messages.',
 )
 def cli(  # pylint: disable=too-many-arguments
     in_filepath,
@@ -610,8 +632,8 @@ def cli(  # pylint: disable=too-many-arguments
     # Default values for these arguments are given above
     force_overwrite,
     nrows,
-    file_delimiter,
     no_checks,
+    hide_progress,
 ):
     """
     Load raw data, convert to specified format, and save result
@@ -626,10 +648,10 @@ def cli(  # pylint: disable=too-many-arguments
     convert(
         in_filepath=in_filepath,
         out_filepath=out_filepath,
-        force_overwrite=force_overwrite,
         nrows=nrows,
-        file_delimiter=file_delimiter,
         with_validation=not no_checks,
+        verbose=not hide_progress,
+        force_overwrite=force_overwrite,
     )
     return None
 

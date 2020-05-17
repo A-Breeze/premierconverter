@@ -16,11 +16,11 @@ jupyter:
 # Data Conversion Challenge
 Challenge to automate the conversion of raw data into a specified format of data to make it more usable.
 
-**Important note**: The data used in this notebook has been randomised and all names have been masked so they can be used for training purposes. This notebook is for development purposes only.
+**Important note**: The data used in this notebook has been randomised and all names have been masked so they can be used for training purposes. No data is committed to the project repo. This notebook is for development purposes only.
 
 This notebook is available in the following locations. These versions are kept in sync *manually* - there should not be discrepancies, but it is possible.
 - On Kaggle: <https://www.kaggle.com/btw78jt/data-conversion-challenge-202004>
-- In the GitHub project repo: <https://github.com/A-Breeze/premierconverter>. See the `README.md` for further instructions.
+- In the GitHub project repo: <https://github.com/A-Breeze/premierconverter>. See the `README.md` for further instructions, and the associated `simulate_dummy_data.md` notebook to generate the dummy data that is used for this notebook.
 <!-- #endregion -->
 
 <!-- #region _cell_guid="79c7e3d0-c299-4dcb-8224-4455121ee9b0" _uuid="d629ff2d2480ee46fbb7e2d37f6b5fab8052498a" -->
@@ -52,10 +52,10 @@ warnings.filterwarnings("ignore", message="unclosed file <_io.Buffered")
 # Determine whether this notebook is running on Kaggle
 from pathlib import Path
 
-on_kaggle = False
+ON_KAGGLE = False
 print("Current working directory: " + str(Path('.').absolute()))
 if str(Path('.').absolute()) == '/kaggle/working':
-    on_kaggle = True
+    ON_KAGGLE = True
 ```
 
 ```python
@@ -72,13 +72,18 @@ import pandas as pd
 from click import __version__ as click_version
 
 # Import project modules
-if not on_kaggle:
+if not ON_KAGGLE:
     from pyprojroot import here
     root_dir_path = here()
     # Allow modules to be imported relative to the project root directory
     if not sys.path[0] == root_dir_path:
         sys.path.insert(0, str(root_dir_path))
 import premierconverter as PCon
+
+# Re-load the project module that we are working on
+%load_ext autoreload
+%aimport premierconverter
+%autoreload 1
 
 # Check they have loaded and the versions are as expected
 assert platform.python_version_tuple() == ('3', '6', '6')
@@ -96,7 +101,7 @@ print(f'premierconverter version:\t{PCon.__version__}')
 
 ```python
 # Output exact environment specification, in case it is needed later
-if on_kaggle:
+if ON_KAGGLE:
     print("Capturing full package environment spec")
     print("(But note that not all these packages are required)")
     !pip freeze > requirements_snapshot.txt
@@ -105,7 +110,7 @@ if on_kaggle:
 
 ```python
 # Configuration variables
-if on_kaggle:
+if ON_KAGGLE:
     raw_data_folder_path = Path('/kaggle/input') / 'dummy-premier-data-raw'
 else:
     import proj_config
@@ -125,6 +130,7 @@ print("Correct: All locations are available as expected")
 # Configuration variables for the expected format and structure of the data
 ACCEPTED_FILE_EXTENSIONS = ['.csv', '', '.txt']
 INPUT_FILE_ENCODINGS = ['utf-8', 'latin-1', 'ISO-8859-1']
+INPUT_SEPARATOR = ","
 
 RAW_STRUCT = {
     'stop_row_at': 'Total Peril Premium',
@@ -188,7 +194,7 @@ print("Correct: Input file exists and has a recognised extension")
 
 ```python
 # View the first n raw CSV lines (without loading into a DataFrame)
-nlines = 4
+nlines = 2
 lines = []
 with in_filepath.open() as f: 
     for line_num in range(nlines):
@@ -280,11 +286,17 @@ if not ((
 
 ```python
 # Convert to DataFrame
-with io.StringIO('\n'.join(in_lines_trunc_df[0])) as in_lines_trunc_stream:
-    df_trimmed = pd.read_csv(
-        in_lines_trunc_stream, header=None, index_col=0,
-        names=range(in_lines_trunc_df[0].str.count(",").max() + 1)
-    ).rename_axis(index=PCon.ROW_ID_NAME)
+with warnings.catch_warnings():
+    # Ignore dtype warnings at this point, because we check them later on (after casting)
+    warnings.filterwarnings(
+        "ignore", message='.*Specify dtype option on import or set low_memory=False',
+        category=pd.errors.DtypeWarning,
+    )
+    with io.StringIO('\n'.join(in_lines_trunc_df[0])) as in_lines_trunc_stream:
+        df_trimmed = pd.read_csv(
+            in_lines_trunc_stream, header=None, index_col=0, sep=INPUT_SEPARATOR,
+            names=range(in_lines_trunc_df[0].str.count(INPUT_SEPARATOR).max() + 1),
+        ).rename_axis(index=PCon.ROW_ID_NAME)
 
 df_trimmed.head()
 ```
@@ -527,8 +539,7 @@ df_formatted.iloc[:10,:20]
 ```python
 # Save it
 df_formatted.to_csv(
-    out_filepath,
-    sep=OUTPUT_DEFAULTS['file_delimiter'], index=True
+    out_filepath, sep=OUTPUT_DEFAULTS['file_delimiter'], index=True
 )
 print("Output saved")
 ```
@@ -538,8 +549,7 @@ print("Output saved")
 ```python
 # Check it worked
 df_reload = pd.read_csv(
-    out_filepath,
-    index_col=0, sep=OUTPUT_DEFAULTS['file_delimiter'],
+    out_filepath, index_col=0, sep=OUTPUT_DEFAULTS['file_delimiter'],
 )
 
 df_reload.head()
@@ -609,7 +619,7 @@ help(PCon.convert)
 ```
 
 ```python
-in_filepath = raw_data_folder_path / 'minimal_input_adj.csv'
+#in_filepath = raw_data_folder_path / 'minimal_input_adj.csv'
 out_filepath = 'formatted_data.csv'
 res_filepath = PCon.convert(in_filepath, out_filepath)
 ```
@@ -661,6 +671,29 @@ res_filepath = PCon.convert(in_filepath, out_filepath, nrows = nrows)
 
 # Check against expected output from manually created worksheet
 expected_filepath = raw_data_folder_path / f'minimal_expected_output_{nrows}.csv'
+df_expected = PCon.load_formatted_file(expected_filepath)
+df_reload = PCon.load_formatted_file(res_filepath)
+
+# Check it matches expectations
+if PCon.formatted_dfs_are_equal(df_reload, df_expected):
+    print("Correct: The reloaded values are equal, up to floating point tolerance")
+
+# Delete the results file
+res_filepath.unlink()
+print("Workspace restored")
+```
+
+## Limited rows with included factors
+
+```python
+nrows = 2
+include_factors = ['NewFact', 'SomeFact']
+in_filepath = raw_data_folder_path / 'minimal_input_adj.csv'
+out_filepath = f'formatted_data_2_all_facts.csv'
+res_filepath = PCon.convert(in_filepath, out_filepath, nrows=nrows, include_factors=include_factors)
+
+# Check against expected output from manually created worksheet
+expected_filepath = raw_data_folder_path / 'minimal_expected_output_2_all_facts.csv'  # Specifically created for this test
 df_expected = PCon.load_formatted_file(expected_filepath)
 df_reload = PCon.load_formatted_file(res_filepath)
 
