@@ -10,7 +10,7 @@
 # $ chmod +x development/CLI_commands.sh  
 
 # Ensure the premierconverter package is installed in the current environment
-# (See README.md for installing the development or built versions)
+# (See DEV_README.md for installing the development or built versions)
 # Ensure pyprojroot is installed:
 # pip install pyprojroot==0.2.0 > /dev/null  # Will install if not already available (silently)
 
@@ -49,17 +49,14 @@ set -x
 
 # python -m premierconverter  # Error because in_filename is required
 # python -m premierconverter $EX_DATA_DIR/there_is_no_file_here  # Error because file does not exist
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx  # Error because out_filename is required
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx -i "no_sheet" out_data.xlsx  # Error because sheet does not exist
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx -i "2" out_data.xlsx  # Warning and error because sheet not correctly formatted
+# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv  # Error because out_filename is required
 
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx  # Creates output
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx  # Fails because the output already exists
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -o "3rows" # Suceeds to another sheet
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx --force  # Forces overwriting to occur
+# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv  # Creates output
+# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv  # Fails because the output already exists
+# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv --force  # Forces overwriting to occur
 
 # Try some other options
-# python -m premierconverter $EX_DATA_DIR/minimal_dummy_data_01.xlsx out_data.xlsx -i "Sheet1" -o "3rows" -r 3 -n --force
+# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv -r 3 -n --force
 
 ############
 # Clean up #

@@ -3,3 +3,4 @@
 
 # Additional requirements for package development
 pyprojroot==0.2.0
+pylint==2.4.4

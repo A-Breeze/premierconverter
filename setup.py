@@ -15,15 +15,16 @@ from setuptools import setup
 
 # Package meta-data
 NAME = 'premierconverter'
-VERSION = '0.2.3'  # Ensure this is kept in-sync with __version__ in the code module
+VERSION = '0.3.3'  # Ensure this is kept in-sync with __version__ in the code module
 DESCRIPTION = 'Convert specified data into a more usable format.'
-URL = 'project URL TBA'
+URL = 'https://github.com/A-Breeze/premierconverter'
 EMAIL = 'maintainer@email.TBA'
-AUTHOR = 'author name TBA'
+AUTHOR = 'A-Breeze'
 REQUIRES_PYTHON = '>=3.6.0'
 
 # What packages are required for this module to be executed?
 def list_reqs(fname='requirements.txt'):
+    """Get string data from a file"""
     with open(fname) as fd:
         return fd.read().splitlines()
 

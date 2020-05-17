@@ -6,5 +6,5 @@ Central store of variables that can be referenced throughout the project.
 from pyprojroot import here
 
 # Project structure
-root_dir_path = here()
-example_data_dir_path = root_dir_path / 'example_data'
+ROOT_DIR_PATH = here()
+example_data_dir_path = ROOT_DIR_PATH / 'example_data'
