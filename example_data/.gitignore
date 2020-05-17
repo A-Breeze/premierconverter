@@ -1,3 +1,4 @@
 # No data files are committed to this repository
 *.*
 !.gitignore
+!README.md
