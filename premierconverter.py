@@ -3,7 +3,7 @@ Automate the conversion of raw data into a specified format of data to make it m
 """
 # pylint: disable=bad-continuation, useless-return
 
-__version__ = '0.3.3'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
+__version__ = '0.4.0'   # Ensure this is kept in-sync with VERSION in the SETUP.PY
 
 #########
 # Setup #
