@@ -22,7 +22,7 @@ Functionality to convert a raw CSV with a given format into a more useful format
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Important notes
-Following the instructions documented in this project to install and use the app is *at own risk*. See the project's [LICENSE](#LICENSE). It is *unlikely* that public contributions on GitHub will be accepted.
+Following the instructions documented in this project to install and use the app is *at own risk*. See the project's [LICENSE](LICENSE). It is *unlikely* that public contributions on GitHub will be accepted.
 
 <p align="right"><a href="#top">Back to top</a></p>
 
