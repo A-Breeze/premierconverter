@@ -6,12 +6,12 @@
 [![Build Status](https://dev.azure.com/a-breeze/premierconverter/_apis/build/status/A-Breeze.premierconverter?branchName=master)](https://dev.azure.com/a-breeze/premierconverter/_build/latest?definitionId=1&branchName=master)
 
 # Premier Converter
-Functionality to convert a raw CSV with a given format into a more useful format.
+Python command line app to convert a raw CSV with a given format into a more useful format.
 
 <!--This table of contents is maintained *manually*-->
 ## Contents
 1. [Important notes](#Important-notes)
-1. [Installation](#Installation): Pre-requisites, Instructions, Explanation, Alternative to cloning
+1. [Installation](#Installation)
 1. [How to use](#How-to-use)
     - [Commandline interface (CLI)](#Commandline-interface-CLI)
     - [Python module](#Python-module)
@@ -27,39 +27,24 @@ Following the instructions documented in this project to install and use the app
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Installation
-These are temporary instructions, as [explained](#Explanation) below.
+You need `conda`, `pip` and `git` available and working in a console (e.g. from Anaconda Prompt or Windows Command Prompt `cmd`). To install the `premierconverter` app, the following commands: 
+- Create a `conda` environment with the required dependencies
+- Activate the environment
+- Install the latest release of the app using `pip` and `git`
+```
+conda create -n premcon_env python==3.6.6 pip==20.0.2 --force
+conda activate premcon_env
+pip install git+https://github.com/A-Breeze/premierconverter.git@master
+```
 
-### Prerequisites
-You need `conda` and `pip` available and working in a console (e.g. from Anaconda Prompt or Windows Command Prompt `cmd`). For the first step, you also need `git` and a connection to the remote repo - but see [Alternative to cloning](#Alternative-to-cloning) for an alternative if you don't have that prerequisite.
+To check the installation has succeeded, run the app to show the version that is installed and verify this is the version you are expecting:
+```
+python -m premierconverter --version
+``` 
 
-### Instructions
-1. Open a console and navigate to the folder where you want a copy of the project files to be located.
-1. Run the following command to clone this Git repo. This will create a subfolder of your current folder called `premierconverter`.
-    ```
-    git clone https://github.com/A-Breeze/premierconverter.git
-    ```
-1. Navigate to the folder which contains a copy of the the files.
-1. Create the `conda` environment from which the `premierconverter` app will be run:
-    ```
-    conda env create -f deploy_env.yml --force
-    ```
-    This includes installing the `premierconverter` module for use.
-
-### Explanation
-- **Future aim**: It would be desirable for the app to be available to install using a simple `pip install` command. However, this requires a package distribution to be hosted in a central registry, which has not yet been set up.
-- **Isolated environment**: The `premierconverter` app has only been developed using specific versions of dependencies. The above instructions are to install the app along with those exact dependencies into an *isolated* `conda` environment called `premcon_env` (and not into the `base` environment). This ensures it will not interfere with any other project you are working on. The strict restrictions on dependency versions might be relaxed in future.
-
-### Alternative to cloning
-There are actually only a few files needed from the repo in order to get up and running. Instead of cloning the entire Git repo, you could download each of the files individually. Save them in a folder anywhere your computer:
-- Code module: [`premierconverter.py`](premierconverter.py).
-- Environment specification: [`deploy_env.yml`](deploy_env.yml) and [`requirements.txt`](requirements.txt).
-- Package specification: [`setup.py`](setup.py) and [`MANIFEST.in`](MANIFEST.in).
-
-To download a single file from GitHub you need to:
-1. Go to the file's page in the repo, e.g. [`premierconverter.py`](premierconverter.py).
-1. Click to view the **Raw** version of the file 
-    - Button at the top right of the file contents: <img src="img/gh_raw_button_screenshot.png" alt="GitHub Raw button screenshot" width="200">
-1. You are directed to a page with the file's content only. Right click and **Save as...** into the location you want. Save the file with the *original* file extension (e.g. `.py` not `.py.txt`).
+### Notes
+- **Isolated environment**: The `premierconverter` app has only been developed using specific versions of dependencies. The above instructions are to install the app along with those exact dependencies into an *isolated* `conda` environment called `premcon_env` (and not into the `base` environment). This ensures it will not interfere with any other project you are working on.
+- **Previous releases**: The instructions above install the latest version of the app. To install a previous version, replace `@master` (at the end of the `pip` command) with the *tag* of the desired release, e.g. `@0.3.3`. 
 
 <p align="right"><a href="#top">Back to top</a></p>
 
