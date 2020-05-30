@@ -11,4 +11,4 @@ def test_package_version():
     to act as a prompt to remember to *manually* keep the other two
     locations in sync.
     """
-    assert PCon.__version__ == '0.3.4'
+    assert PCon.__version__ == '0.4.0'
