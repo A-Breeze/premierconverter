@@ -14,6 +14,7 @@ Notes about how to work on this project.
     - [Run automated tests](#Run-automated-tests)
     - [Build package](#Build-package)
     - [Compile development notebooks](#Compile-development-notebooks)
+    - [Run linting](#Run-linting)
 1. [Further notes](#Further-notes)
 1. [Future ideas](#Future-ideas)
 
@@ -169,8 +170,8 @@ Backlog of all possible ideas, big or small, high priority or low.
 
 ### Documentation
 - How to:
-    - Install and use
-    - Debug warnings and errors
+    - Install and use (currently in the project's README)
+    - Debug warnings and errors (currently in the project's README)
     - Contribute to development (this file)
 - Record version history
 - Possible formats: 
