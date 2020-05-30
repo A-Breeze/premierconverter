@@ -49,14 +49,14 @@ set -x
 
 # python -m premierconverter  # Error because in_filename is required
 # python -m premierconverter $EX_DATA_DIR/there_is_no_file_here  # Error because file does not exist
-# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv  # Error because out_filename is required
+# python -m premierconverter $EX_DATA_DIR/minimal_input_adj.csv  # Error because out_filename is required
 
-# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv  # Creates output
-# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv  # Fails because the output already exists
-# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv --force  # Forces overwriting to occur
+# python -m premierconverter $EX_DATA_DIR/minimal_input_adj.csv out_data.csv  # Creates output
+# python -m premierconverter $EX_DATA_DIR/minimal_input_adj.csv out_data.csv  # Fails because the output already exists
+# python -m premierconverter $EX_DATA_DIR/minimal_input_adj.csv out_data.csv --force  # Forces overwriting to occur
 
 # Try some other options
-# python -m premierconverter $EX_DATA_DIR/minimal01_input.csv out_data.csv -r 3 -n --force
+# python -m premierconverter $EX_DATA_DIR/minimal_input_adj.csv out_data.csv -r 3 -n --force
 
 ############
 # Clean up #
