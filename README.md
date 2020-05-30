@@ -27,7 +27,7 @@ Following the instructions documented in this project to install and use the app
 <p align="right"><a href="#top">Back to top</a></p>
 
 ## Installation
-You need `conda`, `pip` and `git` available and working in a console (e.g. from Anaconda Prompt or Windows Command Prompt `cmd`). To install the `premierconverter` app, the following commands: 
+You need `conda`, `pip` and `git` available and working in a console (e.g. from Anaconda Prompt or Windows Command Prompt `cmd`). Run the following commands to: 
 - Create a `conda` environment with the required dependencies
 - Activate the environment
 - Install the latest release of the app using `pip` and `git`
